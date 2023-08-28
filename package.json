@@ -1,6 +1,6 @@
 {
   "name": "react-native-pagseguro-plugpag",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.1-beta.0",
   "description": "Integre facilmente as principais formas de pagamento da PagSeguro em seus aplicativos React Native através deste módulo nativo.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -30,14 +30,15 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "prepack": "bob build",
-    "release": "release-it",
+    "prepack": "yarn build:plugin && bob build",
+    "release": "yarn build:plugin && release-it",
     "example": "yarn --cwd example",
     "build:android": "cd example/android && ./gradlew assembleDebug --no-daemon --console=plain -PreactNativeArchitectures=arm64-v8a",
     "build:ios": "cd example/ios && xcodebuild -workspace PagseguroPlugpagExample.xcworkspace -scheme PagseguroPlugpagExample -configuration Debug -sdk iphonesimulator CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ GCC_OPTIMIZATION_LEVEL=0 GCC_PRECOMPILE_PREFIX_HEADER=YES ASSETCATALOG_COMPILER_OPTIMIZATION=time DEBUG_INFORMATION_FORMAT=dwarf COMPILER_INDEX_STORE_ENABLE=NO",
     "bootstrap": "yarn example && yarn install && yarn example pods",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build",
-    "expo-module": "expo-module"
+    "expo-module": "expo-module",
+    "build:plugin": "tsc --build plugin"
   },
   "keywords": [
     "react-native",
