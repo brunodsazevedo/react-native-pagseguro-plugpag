@@ -42,8 +42,10 @@
   },
   "keywords": [
     "react-native",
-    "ios",
-    "android"
+    "expo",
+    "android",
+    "pagseguro",
+    "plugpag"
   ],
   "repository": "https://github.com/brunodsazevedo/react-native-pagseguro-plugpag",
   "author": "brunodsazevedo <bruno.ds.azevedo@gmail.com> (https://github.com/brunodsazevedo)",
