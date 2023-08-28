@@ -90,11 +90,6 @@ const { PagseguroPlugpag } = NativeModules;
 export const plugPag = {
   installmentTypes: InstallmentTypes,
   paymentTypes: PaymentTypes,
-  initializeAndActivatePinPad,
-  doPayment,
-  refundPayment,
-  print,
-  useTransactionPaymentEvent,
 };
 
 export async function initializeAndActivatePinPad(
