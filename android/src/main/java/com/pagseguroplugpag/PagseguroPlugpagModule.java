@@ -75,46 +75,22 @@ public class PagseguroPlugpagModule extends ReactContextBaseJavaModule {
     constants.put("INSTALLMENT_TYPE_PARC_VENDEDOR", PlugPag.INSTALLMENT_TYPE_PARC_VENDEDOR);
     constants.put("INSTALLMENT_TYPE_PARC_COMPRADOR", PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR);
 
-    constants.put("OPERATION_ABORT", PlugPag.OPERATION_ABORT);
     constants.put("OPERATION_ABORTED", PlugPag.OPERATION_ABORTED);
-    constants.put("OPERATION_ACTIVATE", PlugPag.OPERATION_ACTIVATE);
-    constants.put("OPERATION_CALCULATE_INSTALLMENTS", PlugPag.OPERATION_CALCULATE_INSTALLMENTS);
-    constants.put("OPERATION_CHECK_AUTHENTICATION", PlugPag.OPERATION_CHECK_AUTHENTICATION);
-    constants.put("OPERATION_DEACTIVATE", PlugPag.OPERATION_DEACTIVATE);
-    constants.put("OPERATION_GET_APPLICATION_CODE", PlugPag.OPERATION_GET_APPLICATION_CODE);
-    constants.put("OPERATION_GET_LIB_VERSION", PlugPag.OPERATION_GET_LIB_VERSION);
-    constants.put("OPERATION_GET_READER_INFOS", PlugPag.OPERATION_GET_READER_INFOS);
-    constants.put("OPERATION_GET_USER_DATA", PlugPag.OPERATION_GET_USER_DATA);
-    constants.put("OPERATION_HAS_CAPABILITY", PlugPag.OPERATION_HAS_CAPABILITY);
-    constants.put("OPERATION_INVALIDATE_AUTHENTICATION", PlugPag.OPERATION_INVALIDATE_AUTHENTICATION);
-    constants.put("OPERATION_NFC_ABORT", PlugPag.OPERATION_NFC_ABORT);
-    constants.put("OPERATION_NFC_READ", PlugPag.OPERATION_NFC_READ);
-    constants.put("OPERATION_NFC_WRITE", PlugPag.OPERATION_NFC_WRITE);
-    constants.put("OPERATION_PAYMENT", PlugPag.OPERATION_PAYMENT);
-    constants.put("OPERATION_PRINT", PlugPag.OPERATION_PRINT);
-    constants.put("OPERATION_QUERY_LAST_APPROVED_TRANSACTION", PlugPag.OPERATION_QUERY_LAST_APPROVED_TRANSACTION);
-    constants.put("OPERATION_REFUND", PlugPag.OPERATION_REFUND);
-    constants.put("OPERATION_REPRINT_CUSTOMER_RECEIPT", PlugPag.OPERATION_REPRINT_CUSTOMER_RECEIPT);
 
     constants.put("ACTION_POST_OPERATION", PlugPag.ACTION_POST_OPERATION);
     constants.put("ACTION_PRE_OPERATION", PlugPag.ACTION_PRE_OPERATION);
     constants.put("ACTION_UPDATE", PlugPag.ACTION_UPDATE);
 
-    constants.put("APN_SERVICE_CLASS_NAME", PlugPag.APN_SERVICE_CLASS_NAME);
-    constants.put("APN_SERVICE_PACKAGE_NAME", PlugPag.APN_SERVICE_PACKAGE_NAME);
 
     constants.put("AUTHENTICATION_FAILED", PlugPag.AUTHENTICATION_FAILED);
     constants.put("COMMUNICATION_ERROR", PlugPag.COMMUNICATION_ERROR);
     constants.put("ERROR_CODE_OK", PlugPag.ERROR_CODE_OK);
     constants.put("MIN_PRINTER_STEPS", PlugPag.MIN_PRINTER_STEPS);
-    constants.put("NFC_SERVICE_CLASS_NAME", PlugPag.NFC_SERVICE_CLASS_NAME);
-    constants.put("NFC_SERVICE_PACKAGE_NAME", PlugPag.NFC_SERVICE_PACKAGE_NAME);
+
     constants.put("NO_PRINTER_DEVICE", PlugPag.NO_PRINTER_DEVICE);
     constants.put("NO_TRANSACTION_DATA", PlugPag.NO_TRANSACTION_DATA);
     constants.put("SERVICE_CLASS_NAME", PlugPag.SERVICE_CLASS_NAME);
     constants.put("SERVICE_PACKAGE_NAME", PlugPag.SERVICE_PACKAGE_NAME);
-    constants.put("SMART_RECHARGE_SERVICE_CLASS_NAME", PlugPag.SMART_RECHARGE_SERVICE_CLASS_NAME);
-    constants.put("SMART_RECHARGE_SERVICE_PACKAGE_NAME", PlugPag.SMART_RECHARGE_SERVICE_PACKAGE_NAME);
 
     constants.put("RET_OK", PlugPag.RET_OK);
     String appVersion;
@@ -132,12 +108,11 @@ public class PagseguroPlugpagModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void setAppIdentification() {
     try {
-      appIdentification = new PlugPagAppIdentification(getPackageInfo().packageName, getPackageInfo().versionName);
-      plugPag = new PlugPag(reactContext, appIdentification);
+      plugPag = new PlugPag(reactContext);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    plugPag = new PlugPag(reactContext, appIdentification);
+    plugPag = new PlugPag(reactContext);
   }
 
   // Ativa terminal e faz o pagamento
