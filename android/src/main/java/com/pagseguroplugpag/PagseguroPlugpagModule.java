@@ -108,7 +108,6 @@ public class PagseguroPlugpagModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void setAppIdentification() {
     try {
-      // appIdentification = new PlugPagAppIdentification(getPackageInfo().packageName, getPackageInfo().versionName);
       plugPag = new PlugPag(reactContext);
     } catch (Exception e) {
       throw new RuntimeException(e);
