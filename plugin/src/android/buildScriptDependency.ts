@@ -19,7 +19,7 @@ export function setDependenceAppBuildGradle(buildGradleApp: string) {
   return buildGradleApp.replace(
     /dependencies\s\{/gm,
     `dependencies {
-    implementation("br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.7.6")
+    implementation("br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.26.1")
 `
   );
 }
