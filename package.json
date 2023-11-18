@@ -1,6 +1,6 @@
 {
   "name": "react-native-pagseguro-plugpag",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Integre facilmente as principais formas de pagamento da PagSeguro em seus aplicativos React Native através deste módulo nativo.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
