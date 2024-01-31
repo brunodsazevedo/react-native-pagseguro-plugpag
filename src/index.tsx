@@ -83,6 +83,10 @@ export type TransactionPaymentEventProps = {
   message: string;
 };
 
+export type AbortResponseProps = {
+  result: boolean;
+};
+
 import { useEffect, useState } from 'react';
 
 const { PagseguroPlugpag } = NativeModules;
@@ -171,6 +175,15 @@ export function useTransactionPaymentEvent() {
   }, []);
 
   return transactionPaymentEvent;
+}
+
+export async function doAbort(): Promise<AbortResponseProps> {
+  try {
+    return PagseguroPlugpag.doAbort();
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 }
 
 export default plugPag;

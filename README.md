@@ -74,6 +74,8 @@ npx expo prebuild -p android --clean
 
 ***useTransactionPaymentEvent***: hook for native events related to financial transactions.
 
+***doAbort***: aborts the current transaction.
+
 ### Usage Examples
 
 Example for activating a pin pad terminal.
@@ -172,6 +174,25 @@ async function handleRefundLastTransaction() {
 
     setIsModalVisible(false);
     Alert.alert('Refund', 'An error occurred while processing the refund');
+  }
+}
+```
+
+Example for abort a transaction:
+
+```JS
+import { doAbort } from 'react-native-pagseguro-plugpag';
+
+async function handleAbortTransaction() {
+  try {
+    const response = await doAbort();
+
+    if (response.result === true) {
+      console.log('Transaction aborted');
+    }
+  } catch (error) {
+    console.log(error);
+    Alert.alert('Failed to abort transaction');
   }
 }
 ```
