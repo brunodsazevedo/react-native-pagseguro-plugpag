@@ -74,7 +74,7 @@ npx expo prebuild -p android --clean
 
 ***useTransactionPaymentEvent***: hook de eventos nativos em relação as transações financeiras
 
-
+***doAbort***: aborta a transação atual.
 
 ### Exemplos de uso
 
@@ -174,6 +174,25 @@ handleRefundLastTransaction() {
 
     setIsModalVisible(false);
     Alert.alert('Estorno', 'Ocorreu um erro ao efetuar estorno');
+  }
+}
+```
+
+Exemplo para abortar uma transação:
+
+```JS
+import { doAbort } from 'react-native-pagseguro-plugpag';
+
+async function handleAbortTransaction() {
+  try {
+    const response = await doAbort();
+
+    if (response.result === true) {
+      console.log('Transação abortada com sucesso');
+    }
+  } catch (error) {
+    console.log(error);
+    Alert.alert('Erro ao abortar transação');
   }
 }
 ```

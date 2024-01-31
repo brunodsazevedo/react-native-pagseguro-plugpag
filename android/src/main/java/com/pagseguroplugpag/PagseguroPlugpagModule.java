@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag;
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData;
@@ -36,6 +37,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData;
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener;
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult;
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData;
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagAbortResult;
 
 @ReactModule(name = PagseguroPlugpagModule.NAME)
 public class PagseguroPlugpagModule extends ReactContextBaseJavaModule {
