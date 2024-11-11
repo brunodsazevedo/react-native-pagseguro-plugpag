@@ -151,12 +151,42 @@ export async function refundPayment(
   }
 }
 
-export async function print(filePath: string): Promise<void> {
+export async function print(filePath: string): Promise<any> {
   try {
-    await PagseguroPlugpag.print(filePath);
+    const response = await PagseguroPlugpag.print(filePath);
+
+    // Emitir eventos para sucesso ou erro com base no resultado da impressão
+    if (response.retCode === 0) {
+      // 0 significa sucesso (PlugPag.RET_OK)
+      DeviceEventEmitter.emit('printSuccess', {
+        message: response.message,
+        errorCode: response.errorCode,
+      });
+      return response; // Retornar o resultado de sucesso diretamente
+    } else {
+      DeviceEventEmitter.emit('printError', {
+        message: response.message,
+        errorCode: response.errorCode,
+      });
+
+      // Enriquecer o objeto de erro com errorCode e retCode
+      const error = new Error(response.message);
+      (error as any).errorCode = response.errorCode;
+      (error as any).retCode = response.retCode;
+      throw error;
+    }
   } catch (error) {
-    console.error(error);
-    throw error;
+    DeviceEventEmitter.emit('printError', {
+      message: 'Erro ao imprimir',
+      errorCode: 'PrintException',
+    });
+
+    // Enriquecer o objeto de erro com retCode padrão se não estiver presente
+    if (!(error as any).retCode) {
+      (error as any).retCode = 'PrintException';
+    }
+
+    throw error; // Lançar o erro para que possa ser capturado por quem chamou a função
   }
 }
 
