@@ -340,56 +340,46 @@ public class PagseguroPlugpagModule extends ReactContextBaseJavaModule {
   // Impressão personalizada a partir de URI de PNG/JPEG
   @ReactMethod
   public void print(String filePath, Promise promise) {
-    setAppIdentification();
+      setAppIdentification();
 
-    PlugPagPrinterListener listener = new PlugPagPrinterListener() {
-      @Override
-      public void onError(@NonNull PlugPagPrintResult plugPagPrintResult) {
-        System.out.print("Message Error=>" + plugPagPrintResult.getMessage());
-      }
+      final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-      @Override
-      public void onSuccess(@NonNull PlugPagPrintResult plugPagPrintResult) {
-        System.out.print("Message Success=>" + plugPagPrintResult.getMessage());
+      Runnable runnableTask = new Runnable() {
+          @Override
+          public void run() {
+              try {
+                  // Verifica permissões, se necessário
 
-      }
-    };
+                  // Cria objeto com informações da impressão
+                  final PlugPagPrinterData file = new PlugPagPrinterData(filePath, 4, 0);
 
-    plugPag.setPrinterListener(listener);
+                  // Executa a impressão
+                  PlugPagPrintResult result = plugPag.printFromFile(file);
 
-    final ExecutorService executor = Executors.newSingleThreadExecutor();
+                  // Cria mapa de retorno para o React Native
+                  WritableMap map = Arguments.createMap();
+                  map.putInt("retCode", result.getResult());
+                  map.putString("message", result.getMessage());
+                  map.putString("errorCode", result.getErrorCode());
 
-    Runnable runnableTask = new Runnable() {
-      @Override
-      public void run() {
-        try {
-          // Cria objeto com informações da impressão
-          final PlugPagPrinterData file = new PlugPagPrinterData(filePath , 4, 10 * 12);
+                  // Verifica resultado da impressão
+                  if (result.getResult() != PlugPag.RET_OK) {
+                      promise.reject("PrintError", result.getMessage());
+                  } else {
+                      promise.resolve(map);
+                  }
 
-          PlugPagPrintResult result = plugPag.printFromFile(file);
-
-          final WritableMap map = Arguments.createMap();
-          map.putInt("retCode", result.getResult());
-          map.putString("message", result.getMessage());
-          map.putString("errorCode", result.getErrorCode());
-          promise.resolve(map);
-          System.out.print("Message =>" + result.getMessage());
-
-          if(result.getResult() != 0) {
-            throw new AppException(result.getMessage());
+                  Log.d("PrintResult", "Message => " + result.getMessage());
+              } catch (Exception error) {
+                  Log.e("PrintException", error.getMessage());
+                  promise.reject("PrintException", error);
+              } finally {
+                  executor.shutdown();
+                  System.gc();
+              }
           }
-          executor.isTerminated();
-          System.gc();
-        } catch (Throwable error) {
-          promise.reject(error);
-          executor.isTerminated();
-          System.gc();
-        }
+      };
 
-      }
-    };
-
-    executor.execute(runnableTask);
-    executor.shutdown();
+      executor.execute(runnableTask);
   }
 }
