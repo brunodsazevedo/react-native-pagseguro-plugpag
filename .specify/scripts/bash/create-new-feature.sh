@@ -5,6 +5,9 @@ set -e
 JSON_MODE=false
 SHORT_NAME=""
 BRANCH_NUMBER=""
+# CUSTOM: suporte a gitflow prefix (feature/, bugfix/, hotfix/)
+BRANCH_TYPE=""
+# END CUSTOM
 ARGS=()
 i=1
 while [ $i -le $# ]; do
@@ -40,13 +43,14 @@ while [ $i -le $# ]; do
             fi
             BRANCH_NUMBER="$next_arg"
             ;;
-        --help|-h) 
-            echo "Usage: $0 [--json] [--short-name <name>] [--number N] <feature_description>"
+        --help|-h)
+            echo "Usage: $0 [--json] [--short-name <name>] [--number N] [--type <type>] <feature_description>"
             echo ""
             echo "Options:"
             echo "  --json              Output in JSON format"
             echo "  --short-name <name> Provide a custom short name (2-4 words) for the branch"
             echo "  --number N          Specify branch number manually (overrides auto-detection)"
+            echo "  --type <type>       Branch type prefix: feature, bugfix, or hotfix"
             echo "  --help, -h          Show this help message"
             echo ""
             echo "Examples:"
@@ -54,12 +58,39 @@ while [ $i -le $# ]; do
             echo "  $0 'Implement OAuth2 integration for API' --number 5"
             exit 0
             ;;
-        *) 
-            ARGS+=("$arg") 
+        --type)
+            # CUSTOM: suporte a gitflow prefix
+            if [ $((i + 1)) -gt $# ]; then
+                echo 'Error: --type requires a value' >&2
+                exit 1
+            fi
+            i=$((i + 1))
+            next_arg="${!i}"
+            if [[ "$next_arg" == --* ]]; then
+                echo 'Error: --type requires a value' >&2
+                exit 1
+            fi
+            BRANCH_TYPE="$next_arg"
+            # END CUSTOM
+            ;;
+        *)
+            ARGS+=("$arg")
             ;;
     esac
     i=$((i + 1))
 done
+
+# CUSTOM: validação do tipo gitflow
+if [ -n "$BRANCH_TYPE" ]; then
+    case "$BRANCH_TYPE" in
+        feature|bugfix|hotfix) ;;
+        *)
+            echo "Error: --type must be one of: feature, bugfix, hotfix. Got: '$BRANCH_TYPE'" >&2
+            exit 1
+            ;;
+    esac
+fi
+# END CUSTOM
 
 FEATURE_DESCRIPTION="${ARGS[*]}"
 if [ -z "$FEATURE_DESCRIPTION" ]; then
@@ -119,9 +150,11 @@ get_highest_from_branches() {
             # Clean branch name: remove leading markers and remote prefixes
             clean_branch=$(echo "$branch" | sed 's/^[* ]*//; s|^remotes/[^/]*/||')
             
-            # Extract feature number if branch matches pattern ###-*
-            if echo "$clean_branch" | grep -q '^[0-9]\{3\}-'; then
-                number=$(echo "$clean_branch" | grep -o '^[0-9]\{3\}' || echo "0")
+            # Extract feature number if branch matches pattern ###-* or type/###-*
+            # CUSTOM: detecta NNN em NNN-nome ou em tipo/NNN-nome
+            if echo "$clean_branch" | grep -qE '^[0-9]{3}-|^(feature|bugfix|hotfix)/[0-9]{3}-'; then
+                number=$(echo "$clean_branch" | grep -oE '(^|/)[0-9]{3}-' | grep -o '[0-9]\{3\}' || echo "0")
+                # END CUSTOM
                 number=$((10#$number))
                 if [ "$number" -gt "$highest" ]; then
                     highest=$number
@@ -256,15 +289,28 @@ fi
 
 # Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)
 FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
-BRANCH_NAME="${FEATURE_NUM}-${BRANCH_SUFFIX}"
+# CUSTOM: suporte a gitflow prefix
+if [ -n "$BRANCH_TYPE" ]; then
+    BRANCH_NAME="${BRANCH_TYPE}/${FEATURE_NUM}-${BRANCH_SUFFIX}"
+else
+    BRANCH_NAME="${FEATURE_NUM}-${BRANCH_SUFFIX}"
+fi
+# END CUSTOM
 
 # GitHub enforces a 244-byte limit on branch names
 # Validate and truncate if necessary
 MAX_BRANCH_LENGTH=244
 if [ ${#BRANCH_NAME} -gt $MAX_BRANCH_LENGTH ]; then
     # Calculate how much we need to trim from suffix
-    # Account for: feature number (3) + hyphen (1) = 4 chars
-    MAX_SUFFIX_LENGTH=$((MAX_BRANCH_LENGTH - 4))
+    # CUSTOM: overhead considera o prefixo de tipo quando presente
+    if [ -n "$BRANCH_TYPE" ]; then
+        # tipo/ (len+1) + NNN (3) + hífen (1) = len("feature/") + 4 por exemplo
+        OVERHEAD=$((${#BRANCH_TYPE} + 1 + 4))
+    else
+        OVERHEAD=4
+    fi
+    MAX_SUFFIX_LENGTH=$((MAX_BRANCH_LENGTH - OVERHEAD))
+    # END CUSTOM
     
     # Truncate suffix at word boundary if possible
     TRUNCATED_SUFFIX=$(echo "$BRANCH_SUFFIX" | cut -c1-$MAX_SUFFIX_LENGTH)
@@ -294,7 +340,9 @@ else
     >&2 echo "[specify] Warning: Git repository not detected; skipped branch creation for $BRANCH_NAME"
 fi
 
-FEATURE_DIR="$SPECS_DIR/$BRANCH_NAME"
+# CUSTOM: pasta sem prefixo de tipo (specs/NNN-nome, não specs/tipo/NNN-nome)
+FEATURE_DIR="$SPECS_DIR/${FEATURE_NUM}-${BRANCH_SUFFIX}"
+# END CUSTOM
 mkdir -p "$FEATURE_DIR"
 
 TEMPLATE=$(resolve_template "spec-template" "$REPO_ROOT") || true

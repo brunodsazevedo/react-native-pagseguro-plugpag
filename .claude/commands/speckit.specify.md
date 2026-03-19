@@ -36,10 +36,26 @@ Given that feature description, do this:
      - "Create a dashboard for analytics" → "analytics-dashboard"
      - "Fix payment processing timeout bug" → "fix-payment-timeout"
 
-2. **Create the feature branch** by running the script with `--short-name` (and `--json`), and do NOT pass `--number` (the script auto-detects the next globally available number across all branches and spec directories):
+1b. **Determine o tipo da branch** (`feature`, `bugfix` ou `hotfix`):
 
-   - Bash example: `.specify/scripts/bash/create-new-feature.sh "$ARGUMENTS" --json --short-name "user-auth" "Add user authentication"`
-   - PowerShell example: `.specify/scripts/bash/create-new-feature.sh "$ARGUMENTS" -Json -ShortName "user-auth" "Add user authentication"`
+   **Regra de precedência:**
+   1. Usuário informou explicitamente no prompt (ex: `feature: Implementar autenticação`)
+      → usa o tipo fornecido diretamente.
+   2. Usuário não informou → inferir da descrição:
+      - Sinais de correção (*corrigir, fix, bug, erro, falha, crash, broken, resolve*) → `bugfix`
+      - Sinais de urgência/produção (*urgente, crítico, produção, hotfix, emergência, critical, prod*) → `hotfix`
+      - Sem sinais claros → `feature` (padrão)
+   3. A descrição contém sinais contraditórios ou misturados (ex: "corrigir e melhorar o fluxo de pagamento")?
+      → perguntar ao usuário: "Essa spec é uma `feature`, `bugfix` ou `hotfix`?"
+      → **não prosseguir** até ter a resposta.
+
+   **Tipos válidos (lista fechada):** `feature`, `bugfix`, `hotfix`.
+   Se o usuário fornecer um tipo inválido, informar e perguntar novamente.
+
+2. **Create the feature branch** by running the script with `--short-name`, `--type` (and `--json`), and do NOT pass `--number` (the script auto-detects the next globally available number across all branches and spec directories):
+
+   - Bash example: `.specify/scripts/bash/create-new-feature.sh "$ARGUMENTS" --json --short-name "user-auth" --type feature "Add user authentication"`
+   - PowerShell example: `.specify/scripts/bash/create-new-feature.sh "$ARGUMENTS" -Json -ShortName "user-auth" -Type feature "Add user authentication"`
 
    **IMPORTANT**:
    - Do NOT pass `--number` — the script determines the correct next number automatically

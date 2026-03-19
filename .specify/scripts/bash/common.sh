@@ -72,11 +72,13 @@ check_feature_branch() {
         return 0
     fi
 
-    if [[ ! "$branch" =~ ^[0-9]{3}- ]]; then
+    # CUSTOM: aceita tanto NNN-nome quanto tipo/NNN-nome
+    if [[ ! "$branch" =~ ^[0-9]{3}- ]] && [[ ! "$branch" =~ ^(feature|bugfix|hotfix)/[0-9]{3}- ]]; then
         echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
-        echo "Feature branches should be named like: 001-feature-name" >&2
+        echo "Feature branches should be named like: 001-feature-name or feature/001-feature-name" >&2
         return 1
     fi
+    # END CUSTOM
 
     return 0
 }
@@ -90,14 +92,19 @@ find_feature_dir_by_prefix() {
     local branch_name="$2"
     local specs_dir="$repo_root/specs"
 
-    # Extract numeric prefix from branch (e.g., "004" from "004-whatever")
-    if [[ ! "$branch_name" =~ ^([0-9]{3})- ]]; then
+    # Extract numeric prefix from branch (e.g., "004" from "004-whatever" or "feature/004-whatever")
+    # CUSTOM: extrai NNN de NNN-nome ou de tipo/NNN-nome
+    local prefix=""
+    if [[ "$branch_name" =~ ^([0-9]{3})- ]]; then
+        prefix="${BASH_REMATCH[1]}"
+    elif [[ "$branch_name" =~ ^(feature|bugfix|hotfix)/([0-9]{3})- ]]; then
+        prefix="${BASH_REMATCH[2]}"
+    else
         # If branch doesn't have numeric prefix, fall back to exact match
         echo "$specs_dir/$branch_name"
         return
     fi
-
-    local prefix="${BASH_REMATCH[1]}"
+    # END CUSTOM
 
     # Search for directories in specs/ that start with this prefix
     local matches=()
