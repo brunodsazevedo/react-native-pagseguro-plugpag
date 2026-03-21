@@ -1,16 +1,18 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0 (MINOR — expanded guidance in existing principle)
-Modified principles:
-  - VI. Android-Only Scope: added iOS runtime behavior rules (two-level guard pattern)
+Version change: 1.1.0 → 1.2.0 (MINOR — lint validation rule added to development workflow)
+Modified sections:
+  - Development Workflow & Quality Gates › PR Checklist: added mandatory `yarn lint` step
+  - Development Workflow & Quality Gates › Absolute Prohibitions: added lint failure prohibition
 Added sections: N/A
 Removed sections: N/A
 Templates reviewed:
-  - .specify/templates/plan-template.md     ✅ Constitution Check is dynamic; no hardcoded Principle VI ref
+  - .specify/templates/plan-template.md     ✅ Constitution Check is dynamic; no update required
   - .specify/templates/spec-template.md     ✅ No constitution-specific references; compatible as-is
-  - .specify/templates/tasks-template.md    ✅ No hardcoded platform-guard references; compatible as-is
+  - .specify/templates/tasks-template.md    ✅ Updated — lint task added to Polish phase
   - .specify/templates/constitution-template.md  ✅ This file supersedes the placeholder template
+  - CLAUDE.md                               ✅ Updated — lint validation section added
 Deferred TODOs:
   - TODO(RESULT_CODES): Mapear lista completa de result codes da SDK PagBank.
     Ref: https://developer.pagbank.com.br/docs/codigos-de-erro-e-retorno-smartpos
@@ -210,7 +212,9 @@ The library targets `br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.33.0`
 ### PR Checklist (All items MUST pass)
 
 - [ ] Unit tests for all new code — 100% coverage of additions.
-- [ ] No `any` — ESLint blocks, but MUST be manually verified.
+- [ ] `yarn lint` passes with zero errors or warnings — MUST be run after every implementation
+  phase and confirmed clean before opening a PR.
+- [ ] No `any` — ESLint blocks, but MUST be manually verified beyond lint output.
 - [ ] Types added/updated in `src/types/` and re-exported from `src/types/index.ts`.
 - [ ] Method exposed in `src/index.ts` if part of the public API.
 - [ ] TurboModule spec (`NativePagseguroPlugpag.ts`) updated if a new native method was added.
@@ -220,6 +224,7 @@ The library targets `br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.33.0`
 ### Absolute Prohibitions
 
 - Committing code without tests.
+- Opening or merging a PR when `yarn lint` reports any errors or warnings.
 - Using `any` without documented exception.
 - Exposing SDK internals directly — all types MUST be mapped to library-owned types.
 - Calling `PlugPag` outside `PagseguroPlugpagModule.kt`.
@@ -244,4 +249,4 @@ Amendments require:
 **Compliance**: All PRs and spec reviews MUST verify compliance with Principles I–VI before merge.
 The `/speckit.plan` Constitution Check gate MUST reference this document.
 
-**Version**: 1.1.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-21
+**Version**: 1.2.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-21

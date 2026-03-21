@@ -7,6 +7,15 @@ Arquivos como `PRD.md`, `prd-constituition.md` e similares na raiz do projeto s�
 
 ## Active Technologies
 - TypeScript 5.9 (camada JS/TurboModule spec) + Kotlin 2.0.21 (módulo nativo Android) + react-native 0.83.2, react-native-builder-bob 0.40.18, @expo/config-plugins (novo devDependency), expo ~55.0.7 (example) (feature/001-pagseguro-sdk-setup)
+- TypeScript 5.9 (camada JS + spec TurboModule) + Kotlin 2.0.21 (módulo nativo Android) + react-native 0.83.2, PlugPagServiceWrapper 1.33.0, kotlinx.coroutines (para variante síncrona) (feature/002-pinpad-activation)
+
+## Lint Validation
+
+`yarn lint` DEVE ser executado e passar sem erros ou avisos após cada fase de implementação.
+Nenhum PR pode ser aberto ou mergeado com falhas de lint. Esta regra está formalizada na
+Constituição (v1.2.0) — PR Checklist e Absolute Prohibitions.
+
+Comando: `yarn lint` (ESLint sobre `**/*.{js,ts,tsx}`)
 
 ## Recent Changes
 - feature/001-pagseguro-sdk-setup: Added TypeScript 5.9 (camada JS/TurboModule spec) + Kotlin 2.0.21 (módulo nativo Android) + react-native 0.83.2, react-native-builder-bob 0.40.18, @expo/config-plugins (novo devDependency), expo ~55.0.7 (example)

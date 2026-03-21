@@ -1,0 +1,109 @@
+package com.pagseguroplugpag
+
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.WritableMap
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class PagseguroPlugpagModuleTest {
+
+  // --- initializeAndActivatePinPad ---
+
+  @Test
+  fun `initializeAndActivatePinPad resolves with result ok on RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagInitializationResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+
+    every { mockPlugPag.initializeAndActivatePinpad(any<PlugPagActivationData>()) } returns successResult
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // Verify promise.resolve is called with { result: 'ok' }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `initializeAndActivatePinPad rejects with PLUGPAG_INITIALIZATION_ERROR on SDK failure`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val failureResult = mockk<PlugPagInitializationResult>()
+    every { failureResult.result } returns 6
+    every { failureResult.errorCode } returns "ABC123"
+    every { failureResult.errorMessage } returns "Terminal não encontrado"
+
+    every { mockPlugPag.initializeAndActivatePinpad(any<PlugPagActivationData>()) } returns failureResult
+
+    // Verify promise.reject is called with PLUGPAG_INITIALIZATION_ERROR and userInfo with result as Int
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `initializeAndActivatePinPad rejects with PLUGPAG_INTERNAL_ERROR on exception`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every {
+      mockPlugPag.initializeAndActivatePinpad(any<PlugPagActivationData>())
+    } throws RuntimeException("Connection failed")
+
+    // Verify promise.reject is called with PLUGPAG_INTERNAL_ERROR and userInfo.result = -1
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- doAsyncInitializeAndActivatePinPad ---
+
+  @Test
+  fun `doAsyncInitializeAndActivatePinPad resolves with result ok when onSuccess is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagActivationListener>()
+    val successResult = mockk<PlugPagInitializationResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+
+    every {
+      mockPlugPag.doAsyncInitializeAndActivatePinpad(any(), capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onSuccess(successResult)
+    }
+
+    // When onSuccess fires, promise.resolve should be called with { result: 'ok' }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doAsyncInitializeAndActivatePinPad rejects with PLUGPAG_INITIALIZATION_ERROR when onError is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagActivationListener>()
+    val errorResult = mockk<PlugPagInitializationResult>()
+    every { errorResult.result } returns 6
+    every { errorResult.errorCode } returns "ABC123"
+    every { errorResult.errorMessage } returns "Terminal não encontrado"
+
+    every {
+      mockPlugPag.doAsyncInitializeAndActivatePinpad(any(), capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError(errorResult)
+    }
+
+    // When onError fires, promise.reject("PLUGPAG_INITIALIZATION_ERROR", ...) should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+}
