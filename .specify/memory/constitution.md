@@ -1,18 +1,15 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (none) → 1.0.0 (initial ratification)
-Modified principles: N/A — initial creation from prd-constituition.md
-Added sections:
-  - Core Principles (I–VI)
-  - API Contract
-  - Development Workflow & Quality Gates
-  - Governance
+Version change: 1.0.0 → 1.1.0 (MINOR — expanded guidance in existing principle)
+Modified principles:
+  - VI. Android-Only Scope: added iOS runtime behavior rules (two-level guard pattern)
+Added sections: N/A
 Removed sections: N/A
 Templates reviewed:
-  - .specify/templates/plan-template.md     ✅ Constitution Check section present; gates now derivable from this document
+  - .specify/templates/plan-template.md     ✅ Constitution Check is dynamic; no hardcoded Principle VI ref
   - .specify/templates/spec-template.md     ✅ No constitution-specific references; compatible as-is
-  - .specify/templates/tasks-template.md    ✅ TDD-first and test inclusion notes align with Principle III
+  - .specify/templates/tasks-template.md    ✅ No hardcoded platform-guard references; compatible as-is
   - .specify/templates/constitution-template.md  ✅ This file supersedes the placeholder template
 Deferred TODOs:
   - TODO(RESULT_CODES): Mapear lista completa de result codes da SDK PagBank.
@@ -126,13 +123,50 @@ This library is **exclusively** an Android library targeting PagBank SmartPOS te
 - The PlugPagServiceWrapper SDK is Android-only. No cross-platform abstraction layer
   is permitted.
 - All native code MUST be written in Kotlin 2.x.
+- The `.podspec` file MUST NOT exist in the repository.
+- The `ios/` directory MUST NOT exist in the repository.
 - Pre-authorization (`doPreAutoCreate`, `doEffectuatePreAuto`), sub-acquirer
   (`initializeSubAcquirer`), and APN configuration are **out of scope** for v1.
 - Threading for SDK calls MUST use the SDK's own async methods directly.
   `Dispatchers.IO` / coroutines wrappers are prohibited unless the SDK requires them.
 
-**Rationale**: The target devices are Android-embedded SmartPOS terminals. Introducing
-iOS abstractions or unnecessary threading overhead contradicts the library's singular purpose.
+#### iOS Runtime Behavior (Two-Level Guard)
+
+When the library is imported or used on iOS, the following behavior MUST be enforced
+in `src/index.tsx`:
+
+**Level 1 — Import warning** (module top-level, non-crashing):
+```typescript
+if (Platform.OS !== 'android') {
+  console.warn(
+    '[react-native-pagseguro-plugpag] WARNING: iOS is not supported. ' +
+    'PagSeguro PlugPag SDK is Android-only.'
+  );
+}
+```
+
+**Level 2 — Method guard** (inside every exported function):
+```typescript
+if (Platform.OS !== 'android') {
+  throw new Error(
+    '[react-native-pagseguro-plugpag] ERROR: <methodName>() is not supported on iOS. ' +
+    'PagSeguro PlugPag SDK is Android-only.'
+  );
+}
+```
+
+Rules:
+- The import warning MUST NOT throw — the app MUST open normally on iOS.
+- Every exported method MUST include the Level 2 guard before any native call.
+- `TurboModuleRegistry.getEnforcing` MUST NOT be used without a preceding platform guard;
+  its uncatchable native crash is prohibited as the sole iOS failure signal.
+- The exact message prefixes `[react-native-pagseguro-plugpag] WARNING:` and
+  `[react-native-pagseguro-plugpag] ERROR:` MUST be preserved for grep-ability.
+
+**Rationale**: The target devices are Android-embedded SmartPOS terminals. The two-level
+guard (warn → throw) ensures iOS consumers receive an actionable, catchable error rather
+than a cryptic native crash. The import-level warning surfaces the issue at Metro startup,
+before any method is called, improving debuggability without breaking app initialization.
 
 ## API Contract
 
@@ -210,4 +244,4 @@ Amendments require:
 **Compliance**: All PRs and spec reviews MUST verify compliance with Principles I–VI before merge.
 The `/speckit.plan` Constitution Check gate MUST reference this document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-19
+**Version**: 1.1.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-21
