@@ -11,10 +11,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "pagseguroplugpag.example"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -26,6 +22,7 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": ["react-native-pagseguro-plugpag"]
   }
 }

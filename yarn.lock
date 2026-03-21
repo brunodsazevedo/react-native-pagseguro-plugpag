@@ -32,6 +32,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/code-frame@npm:~7.10.4":
+  version: 7.10.4
+  resolution: "@babel/code-frame@npm:7.10.4"
+  dependencies:
+    "@babel/highlight": "npm:^7.10.4"
+  checksum: 10c0/69e0f52986a1f40231d891224f420436629b6678711b68c088e97b7bdba1607aeb5eb9cfb070275c433f0bf43c37c134845db80d1cdbf5ac88a69b0bdcce9402
+  languageName: node
+  linkType: hard
+
 "@babel/compat-data@npm:^7.28.6, @babel/compat-data@npm:^7.29.0":
   version: 7.29.0
   resolution: "@babel/compat-data@npm:7.29.0"
@@ -255,7 +264,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/helper-validator-identifier@npm:^7.28.5":
+"@babel/helper-validator-identifier@npm:^7.25.9, @babel/helper-validator-identifier@npm:^7.28.5":
   version: 7.28.5
   resolution: "@babel/helper-validator-identifier@npm:7.28.5"
   checksum: 10c0/42aaebed91f739a41f3d80b72752d1f95fd7c72394e8e4bd7cdd88817e0774d80a432451bcba17c2c642c257c483bf1d409dd4548883429ea9493a3bc4ab0847
@@ -287,6 +296,18 @@ __metadata:
     "@babel/template": "npm:^7.28.6"
     "@babel/types": "npm:^7.29.0"
   checksum: 10c0/dab0e65b9318b2502a62c58bc0913572318595eec0482c31f0ad416b72636e6698a1d7c57cd2791d4528eb8c548bca88d338dc4d2a55a108dc1f6702f9bc5512
+  languageName: node
+  linkType: hard
+
+"@babel/highlight@npm:^7.10.4":
+  version: 7.25.9
+  resolution: "@babel/highlight@npm:7.25.9"
+  dependencies:
+    "@babel/helper-validator-identifier": "npm:^7.25.9"
+    chalk: "npm:^2.4.2"
+    js-tokens: "npm:^4.0.0"
+    picocolors: "npm:^1.0.0"
+  checksum: 10c0/ae0ed93c151b85a07df42936117fa593ce91563a22dfc8944a90ae7088c9679645c33e00dcd20b081c1979665d65f986241172dae1fc9e5922692fc3ff685a49
   languageName: node
   linkType: hard
 
@@ -1734,6 +1755,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/config-plugins@npm:^9.0.0":
+  version: 9.1.7
+  resolution: "@expo/config-plugins@npm:9.1.7"
+  dependencies:
+    "@expo/config-types": "npm:^53.0.0"
+    "@expo/json-file": "npm:~9.1.3"
+    "@expo/plist": "npm:^0.3.3"
+    "@expo/sdk-runtime-versions": "npm:^1.0.0"
+    chalk: "npm:^4.1.2"
+    debug: "npm:^4.3.5"
+    getenv: "npm:^1.0.0"
+    glob: "npm:^10.4.2"
+    resolve-from: "npm:^5.0.0"
+    semver: "npm:^7.5.4"
+    slash: "npm:^3.0.0"
+    slugify: "npm:^1.6.6"
+    xcode: "npm:^3.0.1"
+    xml2js: "npm:0.6.0"
+  checksum: 10c0/fc2bbf909ebe5294ced2a0e4754c2409fa77a3d463c9b7c94973e97143489a62e3b31b20b91fdb2d8719f690b4c431915ce2e0f0f5d6129a21e2b2924d1bb2dd
+  languageName: node
+  linkType: hard
+
 "@expo/config-plugins@npm:~55.0.6":
   version: 55.0.6
   resolution: "@expo/config-plugins@npm:55.0.6"
@@ -1752,6 +1795,13 @@ __metadata:
     xcode: "npm:^3.0.1"
     xml2js: "npm:0.6.0"
   checksum: 10c0/1292600b50f28ba42b4a3b43238eb99a2ae3703fb86c1ebeb8235c1f0db2738bac79a0ff6107acf9dc448baefc5f6209517369614056f5b13f927345e86fcc2b
+  languageName: node
+  linkType: hard
+
+"@expo/config-types@npm:^53.0.0":
+  version: 53.0.5
+  resolution: "@expo/config-types@npm:53.0.5"
+  checksum: 10c0/a7c96f65327de5608aedaf0669bc95b721323113064bdad3473d6faa07b619100ef1df5811f3fdb5dc50d05610842aec8d6bc1902dd0345d51ba2d520884487d
   languageName: node
   linkType: hard
 
@@ -1876,6 +1926,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/json-file@npm:~9.1.3":
+  version: 9.1.5
+  resolution: "@expo/json-file@npm:9.1.5"
+  dependencies:
+    "@babel/code-frame": "npm:~7.10.4"
+    json5: "npm:^2.2.3"
+  checksum: 10c0/989e3aa6d3e31a7f499d7979c6062694f2bc1fe1a4bc81b64aff74c39f27ed5f52098861897236cdc26b86186062560f3191814a2e8ff5b821a74a71d617f135
+  languageName: node
+  linkType: hard
+
 "@expo/local-build-cache-provider@npm:55.0.6":
   version: 55.0.6
   resolution: "@expo/local-build-cache-provider@npm:55.0.6"
@@ -1976,6 +2036,17 @@ __metadata:
     ora: "npm:^3.4.0"
     resolve-workspace-root: "npm:^2.0.0"
   checksum: 10c0/b9e6071b9f29f20ef4aae06390c207f22b17eced1fa2d77903100ab7efefe0951a8735dee997ac434550938d939d132a5b1f3f35344bfe9e40344c090d0ebedc
+  languageName: node
+  linkType: hard
+
+"@expo/plist@npm:^0.3.3":
+  version: 0.3.5
+  resolution: "@expo/plist@npm:0.3.5"
+  dependencies:
+    "@xmldom/xmldom": "npm:^0.8.8"
+    base64-js: "npm:^1.2.3"
+    xmlbuilder: "npm:^15.1.1"
+  checksum: 10c0/d0cde0024b6363f3c96ac186a59795d7c7655986407623324083261ea7e8dcaa7014f385baa1a70422765299eb6d828515ebf0d40590caf34f81997288b74cc1
   languageName: node
   linkType: hard
 
@@ -3807,7 +3878,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"base64-js@npm:^1.5.1":
+"base64-js@npm:^1.2.3, base64-js@npm:^1.5.1":
   version: 1.5.1
   resolution: "base64-js@npm:1.5.1"
   checksum: 10c0/f23823513b63173a001030fae4f2dabe283b99a9d324ade3ad3d148e218134676f1ee8568c877cd79ec1c53158dcf2d2ba527a97c606618928ba99dd930102bf
@@ -5795,6 +5866,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"getenv@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "getenv@npm:1.0.0"
+  checksum: 10c0/9661c5996c7622e12eab1d23448474ae51dbec6f8862eed903ebaa864dcd332895441c23d962e3ff5c180a9e3dff6cb1f569a115e1447db4acb52af2d880d655
+  languageName: node
+  linkType: hard
+
 "getenv@npm:^2.0.0":
   version: 2.0.0
   resolution: "getenv@npm:2.0.0"
@@ -5820,7 +5898,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^10.5.0":
+"glob@npm:^10.4.2, glob@npm:^10.5.0":
   version: 10.5.0
   resolution: "glob@npm:10.5.0"
   dependencies:
@@ -8788,7 +8866,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"picocolors@npm:^1.1.1":
+"picocolors@npm:^1.0.0, picocolors@npm:^1.1.1":
   version: 1.1.1
   resolution: "picocolors@npm:1.1.1"
   checksum: 10c0/e2e3e8170ab9d7c7421969adaa7e1b31434f789afb9b3f115f6b96d91945041ac3ceb02e9ec6fe6510ff036bcc0bf91e69a1772edc0b707e12b19c0f2d6bcf58
@@ -9089,16 +9167,18 @@ __metadata:
     react-native: "npm:0.83.2"
     react-native-builder-bob: "npm:^0.40.18"
     react-native-monorepo-config: "npm:^0.3.3"
+    react-native-pagseguro-plugpag: "workspace:*"
   languageName: unknown
   linkType: soft
 
-"react-native-pagseguro-plugpag@workspace:.":
+"react-native-pagseguro-plugpag@workspace:*, react-native-pagseguro-plugpag@workspace:.":
   version: 0.0.0-use.local
   resolution: "react-native-pagseguro-plugpag@workspace:."
   dependencies:
     "@eslint/compat": "npm:^1.3.2"
     "@eslint/eslintrc": "npm:^3.3.1"
     "@eslint/js": "npm:^9.35.0"
+    "@expo/config-plugins": "npm:^9.0.0"
     "@react-native/babel-preset": "npm:0.83.0"
     "@react-native/eslint-config": "npm:0.83.0"
     "@types/jest": "npm:^29.5.14"

@@ -18,26 +18,6 @@
         "!example/android/app/build"
       ],
       "outputs": []
-    },
-    "build:ios": {
-      "env": [
-        "RCT_NEW_ARCH_ENABLED",
-        "RCT_REMOVE_LEGACY_ARCH",
-        "RCT_USE_RN_DEP",
-        "RCT_USE_PREBUILT_RNCORE"
-      ],
-      "inputs": [
-        "package.json",
-        "*.podspec",
-        "ios",
-        "src/*.ts",
-        "src/*.tsx",
-        "example/package.json",
-        "example/ios",
-        "!example/ios/build",
-        "!example/ios/Pods"
-      ],
-      "outputs": []
     }
   }
 }

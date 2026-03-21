@@ -17,6 +17,7 @@ buildscript {
   repositories {
     google()
     mavenCentral()
+    maven { url 'https://github.com/pagseguro/PlugPagServiceWrapper/raw/master' }
   }
 
   dependencies {
@@ -64,4 +65,5 @@ android {
 
 dependencies {
   implementation "com.facebook.react:react-android"
+  implementation 'br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.33.0'
 }

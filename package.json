@@ -10,17 +10,17 @@
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./app.plugin": "./app.plugin.js",
+    "./app.plugin.js": "./app.plugin.js"
   },
   "files": [
     "src",
     "lib",
     "android",
-    "ios",
-    "cpp",
-    "*.podspec",
+    "app.plugin.js",
+    "plugin/build",
     "react-native.config.js",
-    "!ios/build",
     "!android/build",
     "!android/gradle",
     "!android/gradlew",
@@ -34,14 +34,14 @@
   "scripts": {
     "example": "yarn workspace react-native-pagseguro-plugpag-example",
     "clean": "del-cli lib",
-    "prepare": "bob build",
+    "build:plugin": "tsc --project tsconfig.plugin.json",
+    "prepare": "bob build && yarn build:plugin",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "test": "jest"
   },
   "keywords": [
     "react-native",
-    "ios",
     "android"
   ],
   "repository": {
@@ -61,6 +61,7 @@
     "@eslint/compat": "^1.3.2",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.35.0",
+    "@expo/config-plugins": "^9.0.0",
     "@react-native/babel-preset": "0.83.0",
     "@react-native/eslint-config": "0.83.0",
     "@types/jest": "^29.5.14",
@@ -127,7 +128,7 @@
   },
   "create-react-native-library": {
     "type": "turbo-module",
-    "languages": "kotlin-objc",
+    "languages": "kotlin",
     "tools": [
       "eslint",
       "jest"
