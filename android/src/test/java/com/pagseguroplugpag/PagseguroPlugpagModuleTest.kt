@@ -238,4 +238,44 @@ class PagseguroPlugpagModuleTest {
     // doAsyncPayment should catch exception and call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
     verify(exactly = 0) { mockPromise.resolve(any()) }
   }
+
+  // --- CAUSA-3: null safety — PlugPagTransactionResult.result é java.lang.Integer (Int?) ---
+
+  @Test
+  fun `doPayment rejects with PLUGPAG_PAYMENT_ERROR when result field is null`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val nullResult = mockk<PlugPagTransactionResult>()
+    every { nullResult.result } returns null
+    every { nullResult.errorCode } returns "UNKNOWN"
+    every { nullResult.message } returns "Transação não concluída"
+
+    every { mockPlugPag.doPayment(any<PlugPagPaymentData>()) } returns nullResult
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    // promise.reject("PLUGPAG_PAYMENT_ERROR", userInfo) com result = -1; sem NPE
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doAsyncPayment rejects with PLUGPAG_PAYMENT_ERROR when result field is null`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagPaymentListener>()
+    val nullResult = mockk<PlugPagTransactionResult>()
+    every { nullResult.result } returns null
+    every { nullResult.errorCode } returns "UNKNOWN"
+    every { nullResult.message } returns "Transação não concluída"
+
+    every {
+      mockPlugPag.doAsyncPayment(any<PlugPagPaymentData>(), capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError(nullResult)
+    }
+
+    // onError com result nulo deve chamar promise.reject("PLUGPAG_PAYMENT_ERROR", userInfo) com result = -1
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
 }

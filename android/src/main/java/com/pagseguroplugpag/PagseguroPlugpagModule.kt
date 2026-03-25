@@ -2,14 +2,14 @@ package com.pagseguroplugpag
 
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationListener
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagAppIdentification
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -24,16 +24,8 @@ import kotlinx.coroutines.withContext
 class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   NativePagseguroPlugpagSpec(reactContext) {
 
-  private val plugPag: PlugPag by lazy {
-    val packageInfo = reactApplicationContext.packageManager
-      .getPackageInfo(reactApplicationContext.packageName, 0)
-    val versionName = packageInfo.versionName ?: "1.0"
-    val appIdentification = PlugPagAppIdentification(
-      reactApplicationContext.packageName,
-      versionName
-    )
-    PlugPag(reactApplicationContext, appIdentification)
-  }
+  // SDK wrapper 1.33.0: PlugPag(Context) — AppIdentification é extraída internamente pelo SDK.
+  private val plugPag: PlugPag by lazy { PlugPag(reactApplicationContext) }
 
   // --- Helpers for activation (feature/002) ---
 
@@ -80,7 +72,9 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
 
   private fun buildSdkPaymentErrorUserInfo(result: PlugPagTransactionResult): WritableNativeMap {
     val map = WritableNativeMap()
-    map.putInt("result", result.result)
+    // PlugPagTransactionResult.result é java.lang.Integer (Int?) — pode ser null em terminais
+    // onde o SDK não conseguiu completar a transação. Sentinela -1 é consistente com buildInternalErrorUserInfo.
+    map.putInt("result", result.result ?: -1)
     map.putString("errorCode", result.errorCode ?: "")
     map.putString("message", result.message?.takeIf { it.isNotEmpty() } ?: "Unknown error")
     return map
@@ -245,6 +239,10 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
           override fun onPaymentProgress(eventData: PlugPagEventData) {
             emitPaymentProgress(eventData)
           }
+
+          override fun onPrinterSuccess(result: PlugPagPrintResult) {}
+
+          override fun onPrinterError(result: PlugPagPrintResult) {}
         }
       )
     } catch (e: Exception) {

@@ -374,6 +374,7 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 
 ## Active Technologies
 - TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in) (feature/003-payment-methods)
+- Kotlin 2.0.21 (nativo) — sem alterações TypeScrip + PlugPagServiceWrapper `wrapper:1.33.0`, React Native 0.83.2 (New Architecture), Android Gradle Plugin 8.7.2 (bugfix/004-fix-android-studio-errors)
 
 ## Recent Changes
 - feature/003-payment-methods: Added TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in)
