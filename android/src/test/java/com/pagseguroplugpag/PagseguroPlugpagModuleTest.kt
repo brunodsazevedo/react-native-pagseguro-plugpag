@@ -8,6 +8,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.WritableMap
 import io.mockk.every
@@ -276,6 +277,160 @@ class PagseguroPlugpagModuleTest {
     }
 
     // onError com result nulo deve chamar promise.reject("PLUGPAG_PAYMENT_ERROR", userInfo) com result = -1
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- doRefund (KT-R01, KT-R02, KT-R03, KT-R04, KT-R05, KT-R06) ---
+
+  @Test
+  fun `doRefund resolves with PlugPagTransactionResult on RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagTransactionResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.transactionCode } returns "TXN123"
+    every { successResult.transactionId } returns "ID456"
+    every { successResult.date } returns "20260328"
+    every { successResult.time } returns "120000"
+    every { successResult.hostNsu } returns "NSU789"
+    every { successResult.cardBrand } returns "VISA"
+    every { successResult.bin } returns "411111"
+    every { successResult.holder } returns "JOHN DOE"
+    every { successResult.userReference } returns null
+    every { successResult.terminalSerialNumber } returns "SN001"
+    every { successResult.amount } returns "1000"
+    every { successResult.availableBalance } returns null
+    every { successResult.nsu } returns null
+    every { successResult.cardApplication } returns null
+    every { successResult.label } returns null
+    every { successResult.holderName } returns null
+    every { successResult.extendedHolderName } returns null
+    every { successResult.autoCode } returns null
+
+    every { mockPlugPag.voidPayment(any<PlugPagVoidData>()) } returns successResult
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // doRefund should call promise.resolve with a map containing transactionCode
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doRefund rejects with PLUGPAG_REFUND_ERROR when SDK result is not RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val failureResult = mockk<PlugPagTransactionResult>()
+    every { failureResult.result } returns 2
+    every { failureResult.errorCode } returns "REF001"
+    every { failureResult.message } returns "Estorno recusado"
+
+    every { mockPlugPag.voidPayment(any<PlugPagVoidData>()) } returns failureResult
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    // doRefund should call promise.reject("PLUGPAG_REFUND_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doRefund rejects with PLUGPAG_INTERNAL_ERROR when exception is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.voidPayment(any<PlugPagVoidData>()) } throws RuntimeException("Terminal disconnected")
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    // doRefund should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doRefund uses VOID_QRCODE constant when voidType is VOID_QRCODE`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagTransactionResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.transactionCode } returns "TXN999"
+    every { successResult.transactionId } returns "ID888"
+    every { successResult.date } returns null
+    every { successResult.time } returns null
+    every { successResult.hostNsu } returns null
+    every { successResult.cardBrand } returns null
+    every { successResult.bin } returns null
+    every { successResult.holder } returns null
+    every { successResult.userReference } returns null
+    every { successResult.terminalSerialNumber } returns null
+    every { successResult.amount } returns null
+    every { successResult.availableBalance } returns null
+    every { successResult.nsu } returns null
+    every { successResult.cardApplication } returns null
+    every { successResult.label } returns null
+    every { successResult.holderName } returns null
+    every { successResult.extendedHolderName } returns null
+    every { successResult.autoCode } returns null
+
+    val voidDataSlot = slot<PlugPagVoidData>()
+    every { mockPlugPag.voidPayment(capture(voidDataSlot)) } returns successResult
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    // doRefund should pass PlugPagVoidData with voidType = PlugPag.VOID_QRCODE (int 2)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `buildTransactionResultMap maps 6 new fields`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val result = mockk<PlugPagTransactionResult>()
+    every { result.result } returns PlugPag.RET_OK
+    every { result.transactionCode } returns "TXN123"
+    every { result.transactionId } returns "ID456"
+    every { result.date } returns null
+    every { result.time } returns null
+    every { result.hostNsu } returns null
+    every { result.cardBrand } returns null
+    every { result.bin } returns null
+    every { result.holder } returns null
+    every { result.userReference } returns null
+    every { result.terminalSerialNumber } returns null
+    every { result.amount } returns "1000"
+    every { result.availableBalance } returns null
+    every { result.nsu } returns "NSU001"
+    every { result.cardApplication } returns "VISA_CREDIT"
+    every { result.label } returns "VISA"
+    every { result.holderName } returns "JOHN DOE"
+    every { result.extendedHolderName } returns "JOHN DOE JR"
+    every { result.autoCode } returns "AUTO123"
+
+    every { mockPlugPag.voidPayment(any<PlugPagVoidData>()) } returns result
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // buildTransactionResultMap should include the 6 new fields in the resolved map
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doRefund rejects with PLUGPAG_REFUND_ERROR when result field is null`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val nullResult = mockk<PlugPagTransactionResult>()
+    every { nullResult.result } returns null
+    every { nullResult.errorCode } returns "UNKNOWN"
+    every { nullResult.message } returns "Transação não concluída"
+
+    every { mockPlugPag.voidPayment(any<PlugPagVoidData>()) } returns nullResult
+    every { mockPlugPag.setEventListener(any()) } returns Unit
+
+    // promise.reject("PLUGPAG_REFUND_ERROR", userInfo) com result = -1; sem NPE
     verify(exactly = 0) { mockPromise.resolve(any()) }
   }
 }

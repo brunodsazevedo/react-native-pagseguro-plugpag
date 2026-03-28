@@ -5,6 +5,7 @@ export interface Spec extends TurboModule {
   doAsyncInitializeAndActivatePinPad(activationCode: string): Promise<Object>;
   doPayment(data: Object): Promise<Object>;
   doAsyncPayment(data: Object): Promise<Object>;
+  doRefund(data: Object): Promise<Object>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }

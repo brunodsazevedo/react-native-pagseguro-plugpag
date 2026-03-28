@@ -1,6 +1,10 @@
 import { Platform, DeviceEventEmitter } from 'react-native';
 import { renderHook, act } from '@testing-library/react-native';
-import { usePaymentProgress, subscribeToPaymentProgress } from '../index';
+import {
+  usePaymentProgress,
+  subscribeToPaymentProgress,
+  doRefund,
+} from '../index';
 
 const PREFIX_WARN = '[react-native-pagseguro-plugpag] WARNING:';
 const PREFIX_ERROR = '[react-native-pagseguro-plugpag] ERROR:';
@@ -9,6 +13,7 @@ const mockInitializeAndActivatePinPad = jest.fn();
 const mockDoAsyncInitializeAndActivatePinPad = jest.fn();
 const mockDoPayment = jest.fn();
 const mockDoAsyncPayment = jest.fn();
+const mockDoRefund = jest.fn();
 
 // Mock the native module
 jest.mock('../NativePagseguroPlugpag', () => ({
@@ -18,6 +23,7 @@ jest.mock('../NativePagseguroPlugpag', () => ({
     doAsyncInitializeAndActivatePinPad: mockDoAsyncInitializeAndActivatePinPad,
     doPayment: mockDoPayment,
     doAsyncPayment: mockDoAsyncPayment,
+    doRefund: mockDoRefund,
     addListener: jest.fn(),
     removeListeners: jest.fn(),
   },
@@ -732,6 +738,281 @@ describe('subscribeToPaymentProgress', () => {
       DeviceEventEmitter.emit('onPaymentProgress', {
         eventCode: 4,
         customMessage: null,
+      });
+    });
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// doRefund — iOS platform guard (T009, T040a)
+// =============================================================================
+
+describe('doRefund — iOS platform guard', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  // T040a
+  it('rejects with Error containing correct prefix when called on iOS', async () => {
+    await jest.isolateModulesAsync(async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+
+      const { doRefund: doRefundIos } = require('../index');
+
+      await expect(
+        doRefundIos({
+          transactionCode: 'TXN123',
+          transactionId: 'ID456',
+          voidType: 'VOID_PAYMENT',
+        })
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(PREFIX_ERROR),
+        })
+      );
+    });
+  });
+});
+
+// =============================================================================
+// doRefund — Android normal operation (T010, T040b, T040d, T040e)
+// =============================================================================
+
+describe('doRefund — Android normal operation', () => {
+  beforeEach(() => {
+    mockDoRefund.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  // T040b — sucesso VOID_PAYMENT
+  it('resolves with PlugPagTransactionResult on success (VOID_PAYMENT)', async () => {
+    mockDoRefund.mockResolvedValue(mockTransactionResult);
+
+    const result = await doRefund({
+      transactionCode: 'TXN123',
+      transactionId: 'ID456',
+      voidType: 'VOID_PAYMENT',
+    });
+
+    expect(result).toMatchObject({
+      transactionCode: 'TXN123',
+      transactionId: 'ID456',
+    });
+    expect(mockDoRefund).toHaveBeenCalled();
+  });
+
+  // T040d — erro SDK
+  it('rejects with PLUGPAG_REFUND_ERROR on SDK failure', async () => {
+    const sdkError = Object.assign(new Error('Estorno recusado'), {
+      code: 'PLUGPAG_REFUND_ERROR',
+      userInfo: {
+        result: 2,
+        errorCode: 'REF001',
+        message: 'Estorno recusado',
+      },
+    });
+    mockDoRefund.mockRejectedValue(sdkError);
+
+    await expect(
+      doRefund({
+        transactionCode: 'TXN123',
+        transactionId: 'ID456',
+        voidType: 'VOID_PAYMENT',
+      })
+    ).rejects.toMatchObject({
+      code: 'PLUGPAG_REFUND_ERROR',
+      userInfo: {
+        result: 2,
+        errorCode: 'REF001',
+        message: 'Estorno recusado',
+      },
+    });
+  });
+
+  // T040e — erro interno
+  it('rejects with PLUGPAG_INTERNAL_ERROR on internal exception', async () => {
+    const internalError = Object.assign(new Error('Crash'), {
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: { result: -1, errorCode: 'INTERNAL_ERROR', message: 'Crash' },
+    });
+    mockDoRefund.mockRejectedValue(internalError);
+
+    await expect(
+      doRefund({
+        transactionCode: 'TXN123',
+        transactionId: 'ID456',
+        voidType: 'VOID_PAYMENT',
+      })
+    ).rejects.toMatchObject({
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: { result: -1 },
+    });
+  });
+});
+
+// =============================================================================
+// doRefund — JS validation (T011, T041a-d)
+// =============================================================================
+
+describe('doRefund — JS validation', () => {
+  beforeEach(() => {
+    mockDoRefund.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  // T041a — transactionCode vazio
+  it('rejects before calling native when transactionCode is empty', async () => {
+    await expect(
+      doRefund({
+        transactionCode: '',
+        transactionId: 'ID456',
+        voidType: 'VOID_PAYMENT',
+      })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('transactionCode'),
+      })
+    );
+    expect(mockDoRefund).not.toHaveBeenCalled();
+  });
+
+  // T041b — transactionId vazio
+  it('rejects before calling native when transactionId is empty', async () => {
+    await expect(
+      doRefund({
+        transactionCode: 'TXN123',
+        transactionId: '',
+        voidType: 'VOID_PAYMENT',
+      })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('transactionId'),
+      })
+    );
+    expect(mockDoRefund).not.toHaveBeenCalled();
+  });
+
+  // T041c — voidType inválido
+  it('rejects before calling native when voidType is invalid', async () => {
+    await expect(
+      doRefund({
+        transactionCode: 'TXN123',
+        transactionId: 'ID456',
+        voidType: 'INVALID_TYPE' as 'VOID_PAYMENT',
+      })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('voidType'),
+      })
+    );
+    expect(mockDoRefund).not.toHaveBeenCalled();
+  });
+
+  // T041d — printReceipt omitido → native é chamado normalmente
+  it('calls native when printReceipt is omitted', async () => {
+    mockDoRefund.mockResolvedValue(mockTransactionResult);
+
+    await doRefund({
+      transactionCode: 'TXN123',
+      transactionId: 'ID456',
+      voidType: 'VOID_PAYMENT',
+    });
+
+    expect(mockDoRefund).toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// doRefund — VOID_QRCODE success (T023, T040c)
+// =============================================================================
+
+describe('doRefund — VOID_QRCODE success', () => {
+  beforeEach(() => {
+    mockDoRefund.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  // T040c — sucesso VOID_QRCODE
+  it('resolves with PlugPagTransactionResult when voidType is VOID_QRCODE', async () => {
+    mockDoRefund.mockResolvedValue(mockTransactionResult);
+
+    const result = await doRefund({
+      transactionCode: 'TXN999',
+      transactionId: 'ID888',
+      voidType: 'VOID_QRCODE',
+    });
+
+    expect(result).toMatchObject({
+      transactionCode: 'TXN123',
+      transactionId: 'ID456',
+    });
+    expect(mockDoRefund).toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// doRefund — onPaymentProgress events during refund (T026-T027, US3)
+// =============================================================================
+
+describe('doRefund — onPaymentProgress events during refund', () => {
+  beforeEach(() => {
+    mockDoRefund.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  // T026 — subscribeToPaymentProgress recebe eventos emitidos durante doRefund
+  it('emits onPaymentProgress events during refund', async () => {
+    const callback = jest.fn();
+    const unsubscribe = subscribeToPaymentProgress(callback);
+
+    await act(async () => {
+      DeviceEventEmitter.emit('onPaymentProgress', {
+        eventCode: 10,
+        customMessage: 'Processando estorno',
+      });
+    });
+
+    expect(callback).toHaveBeenCalledWith({
+      eventCode: 10,
+      customMessage: 'Processando estorno',
+    });
+
+    unsubscribe();
+  });
+
+  // T027 — após concluir estorno (unsubscribe), eventos não disparam callback
+  it('does not emit events after unsubscribe following refund completion', async () => {
+    const callback = jest.fn();
+    const unsubscribe = subscribeToPaymentProgress(callback);
+    unsubscribe();
+
+    await act(async () => {
+      DeviceEventEmitter.emit('onPaymentProgress', {
+        eventCode: 11,
+        customMessage: 'Estorno concluído',
       });
     });
 

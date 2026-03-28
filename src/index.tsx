@@ -31,12 +31,27 @@ export const InstallmentType = {
 export type PlugPagInstallmentType =
   (typeof InstallmentType)[keyof typeof InstallmentType];
 
+export const PlugPagVoidType = {
+  VOID_PAYMENT: 'VOID_PAYMENT',
+  VOID_QRCODE: 'VOID_QRCODE',
+} as const;
+
+export type PlugPagVoidTypeValue =
+  (typeof PlugPagVoidType)[keyof typeof PlugPagVoidType];
+
 export interface PlugPagPaymentRequest {
   type: PlugPagPaymentType;
   amount: number;
   installmentType: PlugPagInstallmentType;
   installments: number;
   userReference?: string;
+  printReceipt?: boolean;
+}
+
+export interface PlugPagRefundRequest {
+  transactionCode: string;
+  transactionId: string;
+  voidType: PlugPagVoidTypeValue;
   printReceipt?: boolean;
 }
 
@@ -53,6 +68,12 @@ export interface PlugPagTransactionResult {
   terminalSerialNumber: string | null;
   amount: string | null;
   availableBalance: string | null;
+  nsu?: string | null;
+  cardApplication?: string | null;
+  label?: string | null;
+  holderName?: string | null;
+  extendedHolderName?: string | null;
+  autoCode?: string | null;
 }
 
 export interface PlugPagPaymentProgressEvent {
@@ -185,6 +206,44 @@ export async function doAsyncPayment(
   return PagseguroPlugpag.doAsyncPayment(
     data
   ) as Promise<PlugPagTransactionResult>;
+}
+
+// --- Refund (feature/005) ---
+
+function validateRefundRequest(data: PlugPagRefundRequest): void {
+  if (data.transactionCode.trim() === '') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doRefund() — transactionCode must not be empty.'
+    );
+  }
+  if (data.transactionId.trim() === '') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doRefund() — transactionId must not be empty.'
+    );
+  }
+  if (!Object.values(PlugPagVoidType).includes(data.voidType)) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doRefund() — voidType must be PlugPagVoidType.VOID_PAYMENT or PlugPagVoidType.VOID_QRCODE.'
+    );
+  }
+}
+
+export async function doRefund(
+  data: PlugPagRefundRequest
+): Promise<PlugPagTransactionResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doRefund() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+
+  validateRefundRequest(data);
+
+  const PagseguroPlugpag = (
+    require('./NativePagseguroPlugpag') as { default: Spec }
+  ).default;
+
+  return PagseguroPlugpag.doRefund(data) as Promise<PlugPagTransactionResult>;
 }
 
 // --- Event System (feature/003) ---

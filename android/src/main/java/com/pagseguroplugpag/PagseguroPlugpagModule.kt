@@ -6,6 +6,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
@@ -67,6 +68,12 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
     putStringOrNull("terminalSerialNumber", result.terminalSerialNumber)
     putStringOrNull("amount", result.amount)
     putStringOrNull("availableBalance", result.availableBalance)
+    putStringOrNull("nsu", result.nsu)
+    putStringOrNull("cardApplication", result.cardApplication)
+    putStringOrNull("label", result.label)
+    putStringOrNull("holderName", result.holderName)
+    putStringOrNull("extendedHolderName", result.extendedHolderName)
+    putStringOrNull("autoCode", result.autoCode)
     return map
   }
 
@@ -247,6 +254,51 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
       )
     } catch (e: Exception) {
       promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+    }
+  }
+
+  // --- Refund methods (feature/005) ---
+
+  override fun doRefund(data: ReadableMap, promise: Promise) {
+    // EXCEPTION (Constituição Princípio VI): SDK voidPayment é bloqueante por IPC — Dispatchers.IO é necessário
+    CoroutineScope(Dispatchers.IO).launch {
+      try {
+        val voidType = when (data.getString("voidType")) {
+          "VOID_PAYMENT" -> PlugPag.VOID_PAYMENT
+          "VOID_QRCODE" -> PlugPag.VOID_QRCODE
+          else -> PlugPag.VOID_PAYMENT
+        }
+        val voidData = PlugPagVoidData(
+          transactionCode = data.getString("transactionCode")!!,
+          transactionId = data.getString("transactionId")!!,
+          printReceipt = if (data.hasKey("printReceipt")) data.getBoolean("printReceipt") else false,
+          voidType = voidType
+        )
+
+        plugPag.setEventListener(object : PlugPagEventListener {
+          override fun onEvent(eventData: PlugPagEventData) {
+            emitPaymentProgress(eventData)
+          }
+        })
+
+        val result = plugPag.voidPayment(voidData)
+
+        withContext(Dispatchers.Main) {
+          if (result.result != PlugPag.RET_OK) {
+            promise.reject("PLUGPAG_REFUND_ERROR", buildSdkPaymentErrorUserInfo(result))
+          } else {
+            promise.resolve(buildTransactionResultMap(result))
+          }
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        }
+      } finally {
+        plugPag.setEventListener(object : PlugPagEventListener {
+          override fun onEvent(eventData: PlugPagEventData) {}
+        })
+      }
     }
   }
 
