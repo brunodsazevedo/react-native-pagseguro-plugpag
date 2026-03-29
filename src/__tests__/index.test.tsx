@@ -4,6 +4,11 @@ import {
   usePaymentProgress,
   subscribeToPaymentProgress,
   doRefund,
+  printFromFile,
+  reprintCustomerReceipt,
+  doAsyncReprintCustomerReceipt,
+  reprintEstablishmentReceipt,
+  doAsyncReprintEstablishmentReceipt,
 } from '../index';
 
 const PREFIX_WARN = '[react-native-pagseguro-plugpag] WARNING:';
@@ -14,6 +19,11 @@ const mockDoAsyncInitializeAndActivatePinPad = jest.fn();
 const mockDoPayment = jest.fn();
 const mockDoAsyncPayment = jest.fn();
 const mockDoRefund = jest.fn();
+const mockPrintFromFile = jest.fn();
+const mockReprintCustomerReceipt = jest.fn();
+const mockDoAsyncReprintCustomerReceipt = jest.fn();
+const mockReprintEstablishmentReceipt = jest.fn();
+const mockDoAsyncReprintEstablishmentReceipt = jest.fn();
 
 // Mock the native module
 jest.mock('../NativePagseguroPlugpag', () => ({
@@ -24,6 +34,11 @@ jest.mock('../NativePagseguroPlugpag', () => ({
     doPayment: mockDoPayment,
     doAsyncPayment: mockDoAsyncPayment,
     doRefund: mockDoRefund,
+    printFromFile: mockPrintFromFile,
+    reprintCustomerReceipt: mockReprintCustomerReceipt,
+    doAsyncReprintCustomerReceipt: mockDoAsyncReprintCustomerReceipt,
+    reprintEstablishmentReceipt: mockReprintEstablishmentReceipt,
+    doAsyncReprintEstablishmentReceipt: mockDoAsyncReprintEstablishmentReceipt,
     addListener: jest.fn(),
     removeListeners: jest.fn(),
   },
@@ -1017,5 +1032,491 @@ describe('doRefund — onPaymentProgress events during refund', () => {
     });
 
     expect(callback).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// printFromFile — iOS platform guard (T006)
+// =============================================================================
+
+describe('printFromFile — iOS platform guard', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('rejects with Error containing correct prefix when called on iOS', async () => {
+    await jest.isolateModulesAsync(async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+
+      const { printFromFile: printFromFileIos } = require('../index');
+
+      await expect(
+        printFromFileIos({ filePath: '/path/img.png' })
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(PREFIX_ERROR),
+        })
+      );
+    });
+  });
+});
+
+// =============================================================================
+// printFromFile — Android normal operation (T006)
+// =============================================================================
+
+describe('printFromFile — Android normal operation', () => {
+  beforeEach(() => {
+    mockPrintFromFile.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('resolves with PrintResult on success with defaults', async () => {
+    mockPrintFromFile.mockResolvedValue({ result: 'ok', steps: 120 });
+
+    const result = await printFromFile({ filePath: '/path/img.png' });
+
+    expect(result).toEqual({ result: 'ok', steps: 120 });
+    expect(mockPrintFromFile).toHaveBeenCalledWith({
+      filePath: '/path/img.png',
+    });
+  });
+
+  it('resolves with PrintResult on success with custom parameters', async () => {
+    mockPrintFromFile.mockResolvedValue({ result: 'ok', steps: 80 });
+
+    const result = await printFromFile({
+      filePath: '/path/img.png',
+      printerQuality: 2,
+      steps: 80,
+    });
+
+    expect(result).toEqual({ result: 'ok', steps: 80 });
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK failure', async () => {
+    const sdkError = Object.assign(new Error('Printer not found'), {
+      code: 'PLUGPAG_PRINT_ERROR',
+      userInfo: {
+        result: -1040,
+        errorCode: 'NO_PRINTER',
+        message: 'Printer not found',
+      },
+    });
+    mockPrintFromFile.mockRejectedValue(sdkError);
+
+    await expect(
+      printFromFile({ filePath: '/path/img.png' })
+    ).rejects.toMatchObject({ code: 'PLUGPAG_PRINT_ERROR' });
+  });
+
+  it('rejects with PLUGPAG_INTERNAL_ERROR on internal exception', async () => {
+    const internalError = Object.assign(new Error('IPC failure'), {
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: {
+        result: -1,
+        errorCode: 'INTERNAL_ERROR',
+        message: 'IPC failure',
+      },
+    });
+    mockPrintFromFile.mockRejectedValue(internalError);
+
+    await expect(
+      printFromFile({ filePath: '/path/img.png' })
+    ).rejects.toMatchObject({ code: 'PLUGPAG_INTERNAL_ERROR' });
+  });
+});
+
+// =============================================================================
+// printFromFile — JS validation (T006)
+// =============================================================================
+
+describe('printFromFile — JS validation', () => {
+  beforeEach(() => {
+    mockPrintFromFile.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('rejects with PLUGPAG_VALIDATION_ERROR when filePath is empty', async () => {
+    await expect(printFromFile({ filePath: '' })).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('PLUGPAG_VALIDATION_ERROR'),
+      })
+    );
+    expect(mockPrintFromFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects with PLUGPAG_VALIDATION_ERROR when filePath is whitespace only', async () => {
+    await expect(printFromFile({ filePath: '   ' })).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('PLUGPAG_VALIDATION_ERROR'),
+      })
+    );
+    expect(mockPrintFromFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects with PLUGPAG_VALIDATION_ERROR when printerQuality is out of 1–4 range', async () => {
+    await expect(
+      printFromFile({ filePath: '/path/img.png', printerQuality: 5 })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('PLUGPAG_VALIDATION_ERROR'),
+      })
+    );
+    expect(mockPrintFromFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects with PLUGPAG_VALIDATION_ERROR when printerQuality is 0', async () => {
+    await expect(
+      printFromFile({ filePath: '/path/img.png', printerQuality: 0 })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('PLUGPAG_VALIDATION_ERROR'),
+      })
+    );
+    expect(mockPrintFromFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects with PLUGPAG_VALIDATION_ERROR when steps is negative', async () => {
+    await expect(
+      printFromFile({ filePath: '/path/img.png', steps: -1 })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('PLUGPAG_VALIDATION_ERROR'),
+      })
+    );
+    expect(mockPrintFromFile).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// reprintCustomerReceipt — iOS guard + Android (T010)
+// =============================================================================
+
+describe('reprintCustomerReceipt — iOS platform guard', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('rejects with Error containing correct prefix when called on iOS', async () => {
+    await jest.isolateModulesAsync(async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+      const { reprintCustomerReceipt: fn } = require('../index');
+      await expect(fn()).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(PREFIX_ERROR),
+        })
+      );
+    });
+  });
+});
+
+describe('reprintCustomerReceipt — Android normal operation', () => {
+  beforeEach(() => {
+    mockReprintCustomerReceipt.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('resolves with PrintResult on success', async () => {
+    mockReprintCustomerReceipt.mockResolvedValue({ result: 'ok', steps: 80 });
+    const result = await reprintCustomerReceipt();
+    expect(result).toEqual({ result: 'ok', steps: 80 });
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK failure', async () => {
+    const sdkError = Object.assign(new Error('No printer'), {
+      code: 'PLUGPAG_PRINT_ERROR',
+      userInfo: {
+        result: -1040,
+        errorCode: 'NO_PRINTER',
+        message: 'No printer',
+      },
+    });
+    mockReprintCustomerReceipt.mockRejectedValue(sdkError);
+    await expect(reprintCustomerReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_PRINT_ERROR',
+    });
+  });
+
+  it('rejects with PLUGPAG_INTERNAL_ERROR on internal exception', async () => {
+    const internalError = Object.assign(new Error('IPC failure'), {
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: {
+        result: -1,
+        errorCode: 'INTERNAL_ERROR',
+        message: 'IPC failure',
+      },
+    });
+    mockReprintCustomerReceipt.mockRejectedValue(internalError);
+    await expect(reprintCustomerReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_INTERNAL_ERROR',
+    });
+  });
+});
+
+// =============================================================================
+// doAsyncReprintCustomerReceipt — iOS guard + Android (T010)
+// =============================================================================
+
+describe('doAsyncReprintCustomerReceipt — iOS platform guard', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('rejects with Error containing correct prefix when called on iOS', async () => {
+    await jest.isolateModulesAsync(async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+      const { doAsyncReprintCustomerReceipt: fn } = require('../index');
+      await expect(fn()).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(PREFIX_ERROR),
+        })
+      );
+    });
+  });
+});
+
+describe('doAsyncReprintCustomerReceipt — Android normal operation', () => {
+  beforeEach(() => {
+    mockDoAsyncReprintCustomerReceipt.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('resolves with PrintResult on success', async () => {
+    mockDoAsyncReprintCustomerReceipt.mockResolvedValue({
+      result: 'ok',
+      steps: 80,
+    });
+    const result = await doAsyncReprintCustomerReceipt();
+    expect(result).toEqual({ result: 'ok', steps: 80 });
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK failure', async () => {
+    const sdkError = Object.assign(new Error('No printer'), {
+      code: 'PLUGPAG_PRINT_ERROR',
+      userInfo: {
+        result: -1040,
+        errorCode: 'NO_PRINTER',
+        message: 'No printer',
+      },
+    });
+    mockDoAsyncReprintCustomerReceipt.mockRejectedValue(sdkError);
+    await expect(doAsyncReprintCustomerReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_PRINT_ERROR',
+    });
+  });
+
+  it('rejects with PLUGPAG_INTERNAL_ERROR on internal exception', async () => {
+    const internalError = Object.assign(new Error('IPC failure'), {
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: {
+        result: -1,
+        errorCode: 'INTERNAL_ERROR',
+        message: 'IPC failure',
+      },
+    });
+    mockDoAsyncReprintCustomerReceipt.mockRejectedValue(internalError);
+    await expect(doAsyncReprintCustomerReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_INTERNAL_ERROR',
+    });
+  });
+});
+
+// =============================================================================
+// reprintEstablishmentReceipt — iOS guard + Android (T014)
+// =============================================================================
+
+describe('reprintEstablishmentReceipt — iOS platform guard', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('rejects with Error containing correct prefix when called on iOS', async () => {
+    await jest.isolateModulesAsync(async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+      const { reprintEstablishmentReceipt: fn } = require('../index');
+      await expect(fn()).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(PREFIX_ERROR),
+        })
+      );
+    });
+  });
+});
+
+describe('reprintEstablishmentReceipt — Android normal operation', () => {
+  beforeEach(() => {
+    mockReprintEstablishmentReceipt.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('resolves with PrintResult on success', async () => {
+    mockReprintEstablishmentReceipt.mockResolvedValue({
+      result: 'ok',
+      steps: 80,
+    });
+    const result = await reprintEstablishmentReceipt();
+    expect(result).toEqual({ result: 'ok', steps: 80 });
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK failure', async () => {
+    const sdkError = Object.assign(new Error('No printer'), {
+      code: 'PLUGPAG_PRINT_ERROR',
+      userInfo: {
+        result: -1040,
+        errorCode: 'NO_PRINTER',
+        message: 'No printer',
+      },
+    });
+    mockReprintEstablishmentReceipt.mockRejectedValue(sdkError);
+    await expect(reprintEstablishmentReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_PRINT_ERROR',
+    });
+  });
+
+  it('rejects with PLUGPAG_INTERNAL_ERROR on internal exception', async () => {
+    const internalError = Object.assign(new Error('IPC failure'), {
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: {
+        result: -1,
+        errorCode: 'INTERNAL_ERROR',
+        message: 'IPC failure',
+      },
+    });
+    mockReprintEstablishmentReceipt.mockRejectedValue(internalError);
+    await expect(reprintEstablishmentReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_INTERNAL_ERROR',
+    });
+  });
+});
+
+// =============================================================================
+// doAsyncReprintEstablishmentReceipt — iOS guard + Android (T014)
+// =============================================================================
+
+describe('doAsyncReprintEstablishmentReceipt — iOS platform guard', () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('rejects with Error containing correct prefix when called on iOS', async () => {
+    await jest.isolateModulesAsync(async () => {
+      Object.defineProperty(Platform, 'OS', {
+        value: 'ios',
+        configurable: true,
+      });
+      const { doAsyncReprintEstablishmentReceipt: fn } = require('../index');
+      await expect(fn()).rejects.toThrow(
+        expect.objectContaining({
+          message: expect.stringContaining(PREFIX_ERROR),
+        })
+      );
+    });
+  });
+});
+
+describe('doAsyncReprintEstablishmentReceipt — Android normal operation', () => {
+  beforeEach(() => {
+    mockDoAsyncReprintEstablishmentReceipt.mockReset();
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('resolves with PrintResult on success', async () => {
+    mockDoAsyncReprintEstablishmentReceipt.mockResolvedValue({
+      result: 'ok',
+      steps: 80,
+    });
+    const result = await doAsyncReprintEstablishmentReceipt();
+    expect(result).toEqual({ result: 'ok', steps: 80 });
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK failure', async () => {
+    const sdkError = Object.assign(new Error('No printer'), {
+      code: 'PLUGPAG_PRINT_ERROR',
+      userInfo: {
+        result: -1040,
+        errorCode: 'NO_PRINTER',
+        message: 'No printer',
+      },
+    });
+    mockDoAsyncReprintEstablishmentReceipt.mockRejectedValue(sdkError);
+    await expect(doAsyncReprintEstablishmentReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_PRINT_ERROR',
+    });
+  });
+
+  it('rejects with PLUGPAG_INTERNAL_ERROR on internal exception', async () => {
+    const internalError = Object.assign(new Error('IPC failure'), {
+      code: 'PLUGPAG_INTERNAL_ERROR',
+      userInfo: {
+        result: -1,
+        errorCode: 'INTERNAL_ERROR',
+        message: 'IPC failure',
+      },
+    });
+    mockDoAsyncReprintEstablishmentReceipt.mockRejectedValue(internalError);
+    await expect(doAsyncReprintEstablishmentReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_INTERNAL_ERROR',
+    });
   });
 });

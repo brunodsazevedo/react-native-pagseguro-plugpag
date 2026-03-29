@@ -7,6 +7,9 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import com.facebook.react.bridge.Promise
@@ -431,6 +434,281 @@ class PagseguroPlugpagModuleTest {
     every { mockPlugPag.setEventListener(any()) } returns Unit
 
     // promise.reject("PLUGPAG_REFUND_ERROR", userInfo) com result = -1; sem NPE
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- printFromFile (T007) ---
+
+  @Test
+  fun `printFromFile resolves with result ok and steps on RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagPrintResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.steps } returns 120
+
+    every { mockPlugPag.printFromFile(any<PlugPagPrinterData>()) } returns successResult
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // printFromFile should call promise.resolve with { result: 'ok', steps: 120 }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `printFromFile rejects with PLUGPAG_PRINT_ERROR when SDK result is not RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val failureResult = mockk<PlugPagPrintResult>()
+    every { failureResult.result } returns -1040
+    every { failureResult.errorCode } returns "NO_PRINTER_DEVICE"
+    every { failureResult.message } returns "Printer not found"
+    every { failureResult.steps } returns 0
+
+    every { mockPlugPag.printFromFile(any<PlugPagPrinterData>()) } returns failureResult
+
+    // promise.reject("PLUGPAG_PRINT_ERROR", userInfo) should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `printFromFile rejects with PLUGPAG_INTERNAL_ERROR when SDK throws exception`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.printFromFile(any<PlugPagPrinterData>()) } throws RuntimeException("IPC failure")
+
+    // promise.reject("PLUGPAG_INTERNAL_ERROR", userInfo) with result = -1 should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `printFromFile serializes filePath, printerQuality and steps correctly to PlugPagPrinterData`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagPrintResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.steps } returns 80
+
+    val printerDataSlot = slot<PlugPagPrinterData>()
+    every { mockPlugPag.printFromFile(capture(printerDataSlot)) } returns successResult
+
+    // The captured PlugPagPrinterData should have filePath="/img.png", printerQuality=2, steps=80
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  // --- reprintCustomerReceipt (T011) ---
+
+  @Test
+  fun `reprintCustomerReceipt resolves with result ok and steps on RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagPrintResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.steps } returns 80
+
+    every { mockPlugPag.reprintCustomerReceipt() } returns successResult
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // promise.resolve({ result: 'ok', steps: 80 }) should be called
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `reprintCustomerReceipt rejects with PLUGPAG_PRINT_ERROR when SDK result is not RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val failureResult = mockk<PlugPagPrintResult>()
+    every { failureResult.result } returns -1040
+    every { failureResult.errorCode } returns "NO_PRINTER_DEVICE"
+    every { failureResult.message } returns "Printer not found"
+    every { failureResult.steps } returns 0
+
+    every { mockPlugPag.reprintCustomerReceipt() } returns failureResult
+
+    // promise.reject("PLUGPAG_PRINT_ERROR", ...) should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `reprintCustomerReceipt rejects with PLUGPAG_INTERNAL_ERROR when SDK throws exception`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.reprintCustomerReceipt() } throws RuntimeException("IPC failure")
+
+    // promise.reject("PLUGPAG_INTERNAL_ERROR", ...) with result = -1 should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- doAsyncReprintCustomerReceipt (T011) ---
+
+  @Test
+  fun `doAsyncReprintCustomerReceipt resolves when onSuccess is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagPrinterListener>()
+    val successResult = mockk<PlugPagPrintResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.steps } returns 80
+
+    every {
+      mockPlugPag.asyncReprintCustomerReceipt(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onSuccess(successResult)
+    }
+
+    // promise.resolve({ result: 'ok', steps: 80 }) should be called via onSuccess
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doAsyncReprintCustomerReceipt rejects with PLUGPAG_PRINT_ERROR when onError is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagPrinterListener>()
+    val errorResult = mockk<PlugPagPrintResult>()
+    every { errorResult.result } returns -1040
+    every { errorResult.errorCode } returns "NO_PRINTER_DEVICE"
+    every { errorResult.message } returns "No printer"
+    every { errorResult.steps } returns 0
+
+    every {
+      mockPlugPag.asyncReprintCustomerReceipt(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError(errorResult)
+    }
+
+    // promise.reject("PLUGPAG_PRINT_ERROR", ...) should be called via onError
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doAsyncReprintCustomerReceipt rejects with PLUGPAG_INTERNAL_ERROR when SDK throws before listener`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every {
+      mockPlugPag.asyncReprintCustomerReceipt(any<PlugPagPrinterListener>())
+    } throws RuntimeException("IPC failure")
+
+    // promise.reject("PLUGPAG_INTERNAL_ERROR", ...) should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- reprintEstablishmentReceipt (T015) ---
+
+  @Test
+  fun `reprintEstablishmentReceipt resolves with result ok and steps on RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<PlugPagPrintResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.steps } returns 80
+
+    // Note: SDK method has typo — reprintStablishmentReceipt (FR-013)
+    every { mockPlugPag.reprintStablishmentReceipt() } returns successResult
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // promise.resolve({ result: 'ok', steps: 80 }) should be called
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `reprintEstablishmentReceipt rejects with PLUGPAG_PRINT_ERROR when SDK result is not RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val failureResult = mockk<PlugPagPrintResult>()
+    every { failureResult.result } returns -1040
+    every { failureResult.errorCode } returns "NO_PRINTER_DEVICE"
+    every { failureResult.message } returns "Printer not found"
+    every { failureResult.steps } returns 0
+
+    every { mockPlugPag.reprintStablishmentReceipt() } returns failureResult
+
+    // promise.reject("PLUGPAG_PRINT_ERROR", ...) should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `reprintEstablishmentReceipt rejects with PLUGPAG_INTERNAL_ERROR when SDK throws exception`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.reprintStablishmentReceipt() } throws RuntimeException("IPC failure")
+
+    // promise.reject("PLUGPAG_INTERNAL_ERROR", ...) with result = -1 should be called
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- doAsyncReprintEstablishmentReceipt (T015) ---
+
+  @Test
+  fun `doAsyncReprintEstablishmentReceipt resolves when onSuccess is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagPrinterListener>()
+    val successResult = mockk<PlugPagPrintResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.steps } returns 80
+
+    every {
+      mockPlugPag.asyncReprintEstablishmentReceipt(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onSuccess(successResult)
+    }
+
+    // promise.resolve({ result: 'ok', steps: 80 }) should be called via onSuccess
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doAsyncReprintEstablishmentReceipt rejects with PLUGPAG_PRINT_ERROR when onError is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagPrinterListener>()
+    val errorResult = mockk<PlugPagPrintResult>()
+    every { errorResult.result } returns -1040
+    every { errorResult.errorCode } returns "NO_PRINTER_DEVICE"
+    every { errorResult.message } returns "No printer"
+    every { errorResult.steps } returns 0
+
+    every {
+      mockPlugPag.asyncReprintEstablishmentReceipt(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError(errorResult)
+    }
+
+    // promise.reject("PLUGPAG_PRINT_ERROR", ...) should be called via onError
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doAsyncReprintEstablishmentReceipt rejects with PLUGPAG_INTERNAL_ERROR when SDK throws before listener`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every {
+      mockPlugPag.asyncReprintEstablishmentReceipt(any<PlugPagPrinterListener>())
+    } throws RuntimeException("IPC failure")
+
+    // promise.reject("PLUGPAG_INTERNAL_ERROR", ...) should be called
     verify(exactly = 0) { mockPromise.resolve(any()) }
   }
 }

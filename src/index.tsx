@@ -1,6 +1,10 @@
 import { Platform, NativeEventEmitter, NativeModules } from 'react-native';
 import { useRef, useEffect } from 'react';
 import type { Spec } from './NativePagseguroPlugpag';
+import type { PrintRequest, PrintResult } from './printing';
+
+export type { PrintQualityValue, PrintRequest, PrintResult } from './printing';
+export { PrintQuality, MIN_PRINTER_STEPS } from './printing';
 
 if (Platform.OS !== 'android') {
   console.warn(
@@ -206,6 +210,101 @@ export async function doAsyncPayment(
   return PagseguroPlugpag.doAsyncPayment(
     data
   ) as Promise<PlugPagTransactionResult>;
+}
+
+// --- Printing (feature/006) ---
+
+function validatePrintRequest(data: PrintRequest): void {
+  if (data.filePath.trim() === '') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] PLUGPAG_VALIDATION_ERROR: printFromFile() — filePath must not be empty.'
+    );
+  }
+  if (
+    data.printerQuality !== undefined &&
+    (data.printerQuality < 1 || data.printerQuality > 4)
+  ) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] PLUGPAG_VALIDATION_ERROR: printFromFile() — printerQuality must be between 1 and 4.'
+    );
+  }
+  if (data.steps !== undefined && data.steps < 0) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] PLUGPAG_VALIDATION_ERROR: printFromFile() — steps must be >= 0.'
+    );
+  }
+}
+
+export async function printFromFile(data: PrintRequest): Promise<PrintResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: printFromFile() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+
+  validatePrintRequest(data);
+
+  const PagseguroPlugpag = (
+    require('./NativePagseguroPlugpag') as { default: Spec }
+  ).default;
+
+  return PagseguroPlugpag.printFromFile(data) as Promise<PrintResult>;
+}
+
+export async function reprintCustomerReceipt(): Promise<PrintResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: reprintCustomerReceipt() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+
+  const PagseguroPlugpag = (
+    require('./NativePagseguroPlugpag') as { default: Spec }
+  ).default;
+
+  return PagseguroPlugpag.reprintCustomerReceipt() as Promise<PrintResult>;
+}
+
+export async function doAsyncReprintCustomerReceipt(): Promise<PrintResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doAsyncReprintCustomerReceipt() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+
+  const PagseguroPlugpag = (
+    require('./NativePagseguroPlugpag') as { default: Spec }
+  ).default;
+
+  return PagseguroPlugpag.doAsyncReprintCustomerReceipt() as Promise<PrintResult>;
+}
+
+export async function reprintEstablishmentReceipt(): Promise<PrintResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: reprintEstablishmentReceipt() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+
+  const PagseguroPlugpag = (
+    require('./NativePagseguroPlugpag') as { default: Spec }
+  ).default;
+
+  return PagseguroPlugpag.reprintEstablishmentReceipt() as Promise<PrintResult>;
+}
+
+export async function doAsyncReprintEstablishmentReceipt(): Promise<PrintResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doAsyncReprintEstablishmentReceipt() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+
+  const PagseguroPlugpag = (
+    require('./NativePagseguroPlugpag') as { default: Spec }
+  ).default;
+
+  return PagseguroPlugpag.doAsyncReprintEstablishmentReceipt() as Promise<PrintResult>;
 }
 
 // --- Refund (feature/005) ---
