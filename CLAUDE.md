@@ -5,7 +5,7 @@
 Biblioteca React Native (TurboModule / New Architecture) que expõe o SDK
 `PlugPagServiceWrapper` da PagSeguro para aplicativos React Native. Foco exclusivo em
 Android — terminals PagBank SmartPOS (A920, A930, P2, S920). iOS é explicitamente fora
-de escopo (guarda de dois níveis em `src/index.tsx`).
+de escopo (guarda de dois níveis em `src/index.ts`).
 
 **Package**: `react-native-pagseguro-plugpag` | **Versão**: 0.1.0
 **SDK Alvo**: `br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.33.0`
@@ -35,10 +35,35 @@ de escopo (guarda de dois níveis em `src/index.tsx`).
 
 ```
 src/
-├── NativePagseguroPlugpag.ts   ← Spec TurboModule (fonte da verdade do contrato JS↔Native)
-├── index.tsx                   ← API pública exportada (com iOS guards)
-└── __tests__/
-    └── index.test.tsx          ← Testes unitários JS
+├── NativePagseguroPlugpag.ts        ← Spec TurboModule
+├── functions/
+│   ├── activation/
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── payment/
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── refund/
+│   │   ├── types.ts
+│   │   └── index.ts
+│   ├── print/
+│   │   ├── types.ts
+│   │   └── index.ts
+│   └── index.ts
+├── hooks/
+│   └── usePaymentProgress.ts
+├── types/                           ← vazio até surgir tipo compartilhado entre domínios
+└── index.ts                         ← barrel raiz (iOS guard Nível 1 + re-exports)
+
+src/__tests__/
+├── functions/
+│   ├── activation.test.ts
+│   ├── payment.test.ts
+│   ├── refund.test.ts
+│   └── print.test.ts
+├── hooks/
+│   └── usePaymentProgress.test.ts
+└── index.test.ts                    ← apenas iOS guard Nível 1
 
 android/src/main/java/com/pagseguroplugpag/
 ├── PagseguroPlugpagModule.kt   ← Implementação Kotlin do TurboModule
@@ -55,7 +80,7 @@ example/src/App.tsx             ← App de demonstração
 
 ---
 
-## Constituição do Projeto (v1.2.0)
+## Constituição do Projeto (v1.3.0)
 
 A constituição completa está em `.specify/memory/constitution.md`. Os princípios são
 **NON-NEGOTIABLE** exceto quando explicitamente justificado.
@@ -81,7 +106,7 @@ A constituição completa está em `.specify/memory/constitution.md`. Os princí
 ### Princípio III — Test-First / TDD
 
 - Testes DEVEM ser escritos **antes** da implementação e confirmados como falhando.
-- 100% das funções exportadas de `src/index.tsx` DEVEM ter cobertura de teste unitário.
+- 100% das funções exportadas de `src/index.ts` DEVEM ter cobertura de teste unitário.
 - Todo novo método nativo DEVE ter teste de integração Kotlin (JUnit 5 + Mockk).
 - O módulo nativo (`NativePagseguroPlugpag`) DEVE sempre ser mockado em testes unitários JS.
 - PR que quebra teste existente é **bloqueado**.
@@ -113,19 +138,26 @@ A constituição completa está em `.specify/memory/constitution.md`. Os princí
   Executar na main thread causaria ANR. `Dispatchers.IO` é tecnicamente exigido.
   A exceção DEVE ser documentada com comentário inline no Kotlin.
 
-#### iOS Runtime Guard (Dois Níveis — src/index.tsx)
+#### iOS Runtime Guard (Dois Níveis — src/index.ts)
 
 ```typescript
-// Nível 1 — top-level do módulo (não lança, apenas avisa)
+// Nível 1 — top-level do módulo em src/index.ts (não lança, apenas avisa)
 if (Platform.OS !== 'android') {
   console.warn('[react-native-pagseguro-plugpag] WARNING: iOS is not supported. PagSeguro PlugPag SDK is Android-only.');
 }
 
-// Nível 2 — dentro de cada função exportada (lança erro capturável)
+// Nível 2 — dentro de cada função exportada em functions/<domain>/index.ts (lança erro capturável)
 if (Platform.OS !== 'android') {
   throw new Error('[react-native-pagseguro-plugpag] ERROR: <methodName>() is not available on iOS. PagSeguro PlugPag SDK is Android-only.');
 }
 ```
+
+Placement após domain split:
+- Nível 1 (`console.warn`) vive **exclusivamente** em `src/index.ts` (top-level do módulo).
+- Nível 2 (`throw new Error`) DEVE estar presente em **cada função exportada** dentro de
+  `functions/<domain>/index.ts`. NÃO pode ficar somente em `src/index.ts` porque as funções
+  de domínio são re-exportadas diretamente (sem wrapper).
+- `getNativeModule()` DEVE ser chamado somente após o Nível 2, nunca no top-level do módulo.
 
 Regras:
 - O import warning NÃO deve lançar — o app DEVE abrir normalmente no iOS.
@@ -133,23 +165,56 @@ Regras:
 - `TurboModuleRegistry.getEnforcing` NUNCA deve ser chamado sem guard de plataforma precedente.
 - Os prefixos exatos `[react-native-pagseguro-plugpag] WARNING:` e
   `[react-native-pagseguro-plugpag] ERROR:` DEVEM ser preservados (grep-ability).
-- O import do módulo nativo DEVE ser lazy (via `require(...)`) — somente após o guard.
+- O acesso ao módulo nativo DEVE ser lazy via `getNativeModule()` — somente após o guard.
 
 ---
 
 ## Padrões de Código
 
-### TypeScript — API Pública (`src/index.tsx`)
+### TypeScript — Arquivos de Domínio (`src/functions/<domain>/index.ts`)
 
 ```typescript
-// Padrão de import lazy (NUNCA importar antes do guard)
-const PagseguroPlugpag = (
-  require('./NativePagseguroPlugpag') as { default: Spec }
-).default;
+// import type no topo (Grupo 4) — zero efeito em runtime com verbatimModuleSyntax
+import type { Spec } from '../../NativePagseguroPlugpag';
 
-// Tipos de retorno devem ser type assertion explícita (não 'as any')
-return PagseguroPlugpag.someMethod(param) as Promise<DefinedType>;
+// Accessor lazy privado — NativePagseguroPlugpag.ts executa TurboModuleRegistry.getEnforcing()
+// ao ser avaliado. Um import ES causaria crash no iOS antes de qualquer guard.
+// EXCEPTION: require() é necessário aqui — única exceção ao padrão ES import no projeto.
+// NEVER call getNativeModule() before the Level 2 platform guard.
+function getNativeModule(): Spec {
+  return (require('../../NativePagseguroPlugpag') as { default: Spec }).default;
+}
+
+// Uso dentro de função exportada, sempre após o guard Nível 2:
+export async function doPayment(data: PlugPagPaymentRequest): Promise<PlugPagTransactionResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error('[react-native-pagseguro-plugpag] ERROR: doPayment() ...');
+  }
+  return getNativeModule().doPayment(data) as Promise<PlugPagTransactionResult>;
+}
 ```
+
+### TypeScript — Organização de Imports (ordem obrigatória)
+
+```typescript
+// Grupo 1 — bibliotecas externas (react, react-native, pacotes npm)
+import { Platform } from 'react-native';
+
+// Grupo 2 — arquivos internos do projeto (value imports)
+import { validatePaymentRequest } from './validation';
+
+// Grupo 3 — hooks internos (quando aplicável — omitir grupo se não houver)
+
+// Grupo 4 — imports de tipagem (import type — sempre no último grupo)
+import type { Spec } from '../../NativePagseguroPlugpag';
+import type { PlugPagPaymentRequest } from './types';
+```
+
+Regras derivadas:
+- `import type` SEMPRE no último grupo — nunca misturado com value imports.
+- Dentro de cada grupo, ordenar alfabeticamente pelo caminho do módulo.
+- Grupos vazios são omitidos (sem linhas em branco desnecessárias).
+- Aplica-se a todos os arquivos em `functions/`, `hooks/`, `types/` e `src/index.ts`.
 
 ### Kotlin — Módulo Nativo
 
@@ -196,7 +261,9 @@ plugPag.doAsyncMethod(data, object : SdkListener {
 | Const enum object | PascalCase | `PaymentType`, `InstallmentType` |
 | Funções exportadas | camelCase | `doPayment`, `initializeAndActivatePinPad` |
 | Hooks | `use` + PascalCase | `useTransactionPaymentEvent` |
-| Arquivos de tipo | kebab-case | `payment.ts`, `nfc.ts` |
+| Arquivos de tipo de domínio | `functions/<domain>/types.ts` | `functions/payment/types.ts` |
+| Arquivos index de domínio | `functions/<domain>/index.ts` | `functions/payment/index.ts` |
+| Arquivos de hook | `hooks/<hookName>.ts` | `hooks/usePaymentProgress.ts` |
 | Spec TurboModule | `Native<ModuleName>.ts` | `NativePagseguroPlugpag.ts` |
 | Classes Kotlin | PascalCase | `PagseguroPlugpagModule` |
 | Constantes Kotlin | UPPER_SNAKE_CASE | `MAX_RETRIES` |
@@ -213,7 +280,7 @@ yarn lint   # ESLint sobre **/*.{js,ts,tsx} — DEVE passar sem erros ou avisos
 
 `yarn lint` DEVE ser executado e passar sem erros ou avisos após cada fase de
 implementação. Nenhum PR pode ser aberto ou mergeado com falhas de lint.
-Formalizado na Constituição v1.2.0 — PR Checklist e Absolute Prohibitions.
+Formalizado na Constituição v1.3.0 — PR Checklist e Absolute Prohibitions.
 
 ### Codegen Android (BLOQUEANTE)
 
@@ -249,8 +316,9 @@ outra ação.
 - [ ] Testes unitários para todo código novo — 100% de cobertura das adições.
 - [ ] `yarn lint` passa com zero erros ou avisos.
 - [ ] Zero `any` — verificar além do output do lint.
-- [ ] Tipos adicionados/atualizados e re-exportados corretamente.
-- [ ] Método exposto em `src/index.tsx` se faz parte da API pública.
+- [ ] Tipos posicionados corretamente: domínio específico em `src/functions/<domain>/types.ts`;
+      tipos compartilhados entre ≥2 domínios em `src/types/`.
+- [ ] Método exposto em `src/index.ts` se faz parte da API pública.
 - [ ] Spec TurboModule (`NativePagseguroPlugpag.ts`) atualizada se novo método nativo.
 - [ ] **Codegen regenerado** (`generateCodegenArtifactsFromSchema`) se `NativePagseguroPlugpag.ts` foi alterado.
 - [ ] Implementação Kotlin atualizada em `PagseguroPlugpagModule.kt`.
