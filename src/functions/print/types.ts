@@ -10,7 +10,7 @@ export type PrintQualityValue =
 
 export interface PrintRequest {
   filePath: string;
-  printerQuality?: number;
+  printerQuality?: PrintQualityValue;
   steps?: number;
 }
 

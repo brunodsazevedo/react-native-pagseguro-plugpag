@@ -1,0 +1,20 @@
+export interface PlugPagTransactionResult {
+  transactionCode: string | null;
+  transactionId: string | null;
+  date: string | null;
+  time: string | null;
+  hostNsu: string | null;
+  cardBrand: string | null;
+  bin: string | null;
+  holder: string | null;
+  userReference: string | null;
+  terminalSerialNumber: string | null;
+  amount: string | null;
+  availableBalance: string | null;
+  nsu?: string | null;
+  cardApplication?: string | null;
+  label?: string | null;
+  holderName?: string | null;
+  extendedHolderName?: string | null;
+  autoCode?: string | null;
+}

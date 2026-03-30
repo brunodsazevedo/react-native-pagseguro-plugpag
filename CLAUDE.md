@@ -52,7 +52,8 @@ src/
 │   └── index.ts
 ├── hooks/
 │   └── usePaymentProgress.ts
-├── types/                           ← vazio até surgir tipo compartilhado entre domínios
+├── types/
+│   └── sharedTypes.ts               ← PlugPagTransactionResult (compartilhado por payment e refund)
 └── index.ts                         ← barrel raiz (iOS guard Nível 1 + re-exports)
 
 src/__tests__/
@@ -344,6 +345,7 @@ outra ação.
 | 001 — SDK Setup & Expo Plugin | `feature/001-pagseguro-sdk-setup` | ✅ Completo |
 | 002 — PinPad Activation | `feature/002-pinpad-activation` | ✅ Completo |
 | 003 — Payment Methods (Credit/Debit/PIX) | `develop` (PRD em elaboração) | 🚧 Em spec |
+| 007 — TS Domain Split (Clean Code) | `feature/007-ts-domain-split` | ✅ Completo |
 
 ### Feature/002 — Estado Atual (API Pública)
 
@@ -374,8 +376,9 @@ Evento: `onPaymentProgress` (NativeEventEmitter → JS)
 
 ```typescript
 // Estrutura de mock do módulo nativo (sempre mockado em unit tests)
+// Path em src/__tests__/functions/<domain>.test.ts:
 const mockMethod = jest.fn();
-jest.mock('../NativePagseguroPlugpag', () => ({
+jest.mock('../../NativePagseguroPlugpag', () => ({
   __esModule: true,
   default: { methodName: mockMethod },
 }));
@@ -445,6 +448,8 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 - Kotlin 2.0.21 (nativo) — sem alterações TypeScrip + PlugPagServiceWrapper `wrapper:1.33.0`, React Native 0.83.2 (New Architecture), Android Gradle Plugin 8.7.2 (bugfix/004-fix-android-studio-errors)
 - TypeScript 5.9 (strict) + Kotlin 2.0.21 + PlugPagServiceWrapper `wrapper:1.33.0`, React Native 0.83.2 (New Architecture / TurboModules + JSI) (feature/005-refund-payment)
 - TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + PlugPagServiceWrapper 1.33.0, React Native 0.83.2 (New Architecture / TurboModules + JSI) (feature/006-custom-printing)
+- TypeScript 5.9 (`strict: true`, `verbatimModuleSyntax: true`) + React Native 0.83.2 (New Architecture / TurboModules), Jest 29 + react-native preset, @testing-library/react-native (feature/007-ts-domain-split)
+- N/A — biblioteca sem estado persistente (feature/007-ts-domain-split)
 
 ## Recent Changes
 - feature/003-payment-methods: Added TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in)
