@@ -131,6 +131,100 @@ describe('validatePrintRequest', () => {
       printFromFile({ filePath: '/path/to/file.png', steps: -1 })
     ).rejects.toThrow('steps');
   });
+
+  it('rejects when printerQuality is 99', async () => {
+    // EXCEPTION: type assertion required to simulate JS/untyped callers passing invalid runtime values
+    await expect(
+      printFromFile({
+        filePath: '/path/to/file.png',
+        printerQuality: 99 as unknown as 1,
+      })
+    ).rejects.toThrow('PLUGPAG_VALIDATION_ERROR');
+  });
+
+  it('rejects when printerQuality is 0', async () => {
+    // EXCEPTION: type assertion required to simulate JS/untyped callers passing invalid runtime values
+    await expect(
+      printFromFile({
+        filePath: '/path/to/file.png',
+        printerQuality: 0 as unknown as 1,
+      })
+    ).rejects.toThrow('PLUGPAG_VALIDATION_ERROR');
+  });
+
+  it('rejects when printerQuality is -1', async () => {
+    // EXCEPTION: type assertion required to simulate JS/untyped callers passing invalid runtime values
+    await expect(
+      printFromFile({
+        filePath: '/path/to/file.png',
+        printerQuality: -1 as unknown as 1,
+      })
+    ).rejects.toThrow('PLUGPAG_VALIDATION_ERROR');
+  });
+});
+
+// =============================================================================
+// doAsyncReprintCustomerReceipt — Android normal operation
+// =============================================================================
+
+describe('doAsyncReprintCustomerReceipt — Android normal operation', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('resolves with PrintResult on success', async () => {
+    mockDoAsyncReprintCustomerReceipt.mockResolvedValueOnce(mockPrintResult);
+    const result = await doAsyncReprintCustomerReceipt();
+    expect(result).toEqual(mockPrintResult);
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK error', async () => {
+    mockDoAsyncReprintCustomerReceipt.mockRejectedValueOnce(
+      Object.assign(new Error('reprint failed'), {
+        code: 'PLUGPAG_PRINT_ERROR',
+      })
+    );
+    await expect(doAsyncReprintCustomerReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_PRINT_ERROR',
+    });
+  });
+});
+
+// =============================================================================
+// doAsyncReprintEstablishmentReceipt — Android normal operation
+// =============================================================================
+
+describe('doAsyncReprintEstablishmentReceipt — Android normal operation', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('resolves with PrintResult on success', async () => {
+    mockDoAsyncReprintEstablishmentReceipt.mockResolvedValueOnce(
+      mockPrintResult
+    );
+    const result = await doAsyncReprintEstablishmentReceipt();
+    expect(result).toEqual(mockPrintResult);
+  });
+
+  it('rejects with PLUGPAG_PRINT_ERROR on SDK error', async () => {
+    mockDoAsyncReprintEstablishmentReceipt.mockRejectedValueOnce(
+      Object.assign(new Error('reprint failed'), {
+        code: 'PLUGPAG_PRINT_ERROR',
+      })
+    );
+    await expect(doAsyncReprintEstablishmentReceipt()).rejects.toMatchObject({
+      code: 'PLUGPAG_PRINT_ERROR',
+    });
+  });
 });
 
 // =============================================================================

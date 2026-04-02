@@ -24,6 +24,14 @@ function validatePrintRequest(data: PrintRequest): void {
       '[react-native-pagseguro-plugpag] PLUGPAG_VALIDATION_ERROR: printFromFile() — steps must be >= 0.'
     );
   }
+  if (
+    data.printerQuality !== undefined &&
+    (data.printerQuality < 1 || data.printerQuality > 4)
+  ) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] PLUGPAG_VALIDATION_ERROR: printFromFile() — printerQuality must be between 1 and 4.'
+    );
+  }
 }
 
 export async function printFromFile(data: PrintRequest): Promise<PrintResult> {
