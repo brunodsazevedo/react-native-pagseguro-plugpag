@@ -450,6 +450,7 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 - TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + PlugPagServiceWrapper 1.33.0, React Native 0.83.2 (New Architecture / TurboModules + JSI) (feature/006-custom-printing)
 - TypeScript 5.9 (`strict: true`, `verbatimModuleSyntax: true`) + React Native 0.83.2 (New Architecture / TurboModules), Jest 29 + react-native preset, @testing-library/react-native (feature/007-ts-domain-split)
 - N/A — biblioteca sem estado persistente (feature/007-ts-domain-split)
+- N/A — sem estado persistente (bugfix/008-fix-print-validation-tests)
 
 ## Recent Changes
 - feature/003-payment-methods: Added TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in)
