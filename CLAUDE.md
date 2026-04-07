@@ -360,6 +360,89 @@ doAsyncInitializeAndActivatePinPad(activationCode: string): Promise<PlugPagActiv
 interface PlugPagActivationSuccess { result: 'ok' }
 ```
 
+### API Pública — Tipagens Exportadas por `src/index.ts`
+
+Commit `8a533fd` adicionou `export type *` de todos os domínios. Abaixo o inventário
+completo de tipos disponíveis para consumidores da biblioteca:
+
+```typescript
+// --- Compartilhado (src/types/sharedTypes.ts) ---
+interface PlugPagTransactionResult {
+  transactionCode: string | null;
+  transactionId: string | null;
+  date: string | null;
+  time: string | null;
+  hostNsu: string | null;
+  cardBrand: string | null;
+  bin: string | null;
+  holder: string | null;
+  userReference: string | null;
+  terminalSerialNumber: string | null;
+  amount: string | null;
+  availableBalance: string | null;
+  nsu?: string | null;
+  cardApplication?: string | null;
+  label?: string | null;
+  holderName?: string | null;
+  extendedHolderName?: string | null;
+  autoCode?: string | null;
+}
+
+// --- Activation (src/functions/activation/types.ts) ---
+interface PlugPagActivationSuccess { result: 'ok' }
+
+// --- Payment (src/functions/payment/types.ts) ---
+const PaymentType = { CREDIT, DEBIT, PIX } as const;
+type PlugPagPaymentType = 'CREDIT' | 'DEBIT' | 'PIX';
+
+const InstallmentType = { A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR } as const;
+type PlugPagInstallmentType = 'A_VISTA' | 'PARC_VENDEDOR' | 'PARC_COMPRADOR';
+
+interface PlugPagPaymentRequest {
+  type: PlugPagPaymentType;
+  amount: number;
+  installmentType: PlugPagInstallmentType;
+  installments: number;
+  userReference?: string;
+  printReceipt?: boolean;
+}
+
+interface PlugPagPaymentProgressEvent {
+  eventCode: number;
+  customMessage: string | null;
+}
+
+// --- Print (src/functions/print/types.ts) ---
+const PrintQuality = { LOW: 1, MEDIUM: 2, HIGH: 3, MAX: 4 } as const;
+type PrintQualityValue = 1 | 2 | 3 | 4;
+
+interface PrintRequest {
+  filePath: string;
+  printerQuality?: PrintQualityValue;
+  steps?: number;
+}
+
+interface PrintResult { result: 'ok'; steps: number }
+
+const MIN_PRINTER_STEPS = 70;   // constante de valor, não apenas tipo
+
+// --- Refund (src/functions/refund/types.ts) ---
+const PlugPagVoidType = { VOID_PAYMENT, VOID_QRCODE } as const;
+type PlugPagVoidTypeValue = 'VOID_PAYMENT' | 'VOID_QRCODE';
+
+interface PlugPagRefundRequest {
+  transactionCode: string;
+  transactionId: string;
+  voidType: PlugPagVoidTypeValue;
+  printReceipt?: boolean;
+}
+```
+
+> **Nota**: `MIN_PRINTER_STEPS` é um valor (`const`), exportado junto com os tipos via
+> `export type *` — disponível para validação no lado do consumidor.
+
+---
+
 ### Feature/003 — Próxima Feature (Planejada)
 
 Métodos a implementar no TurboModule:
@@ -455,4 +538,5 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 - File system — 4 Markdown files at repo roo (feature/009-library-docs)
 
 ## Recent Changes
+- feature/009-library-docs (commit `8a533fd`): `src/index.ts` agora re-exporta `export type *` de todos os domínios (`activation`, `payment`, `print`, `refund`) além do `PlugPagTransactionResult` compartilhado. Superfície completa de tipos disponível para consumidores da biblioteca.
 - feature/003-payment-methods: Added TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in)
