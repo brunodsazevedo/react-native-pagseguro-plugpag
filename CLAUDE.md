@@ -346,6 +346,8 @@ outra ação.
 | 002 — PinPad Activation | `feature/002-pinpad-activation` | ✅ Completo |
 | 003 — Payment Methods (Credit/Debit/PIX) | `develop` (PRD em elaboração) | 🚧 Em spec |
 | 007 — TS Domain Split (Clean Code) | `feature/007-ts-domain-split` | ✅ Completo |
+| 009 — Library Docs | `feature/009-library-docs` | ✅ Completo |
+| 010 — CI/CD npm Deploy | `feature/010-cicd-npm-deploy` | ✅ Completo |
 
 ### Feature/002 — Estado Atual (API Pública)
 
@@ -491,6 +493,71 @@ fun `método rejeita com PLUGPAG_INTERNAL_ERROR quando SDK lança exceção`() {
 
 ---
 
+## CI/CD (feature/010)
+
+### Arquivos
+
+- **Workflow**: `.github/workflows/ci-cd.yml`
+- **Composite action**: `.github/actions/setup/action.yml` — configura Node.js e cache do yarn; usado por todos os jobs
+
+### Estrutura do Pipeline
+
+```
+ci ──────────────────┐
+                     ├──▶ cd (apenas push para main)
+build-android ───────┘
+```
+
+| Job | Triggers | O que faz |
+|---|---|---|
+| `ci` | push + PR → main | lint → typecheck → testes JS → `yarn prepare` |
+| `build-android` | push + PR → main | expo prebuild + gradle build do example app |
+| `cd` | push → main (após ci + build-android) | `yarn prepare` → verify artifacts → npm publish |
+
+### Regras de publicação
+
+- **Gate de CI obrigatório**: `cd` só roda se `ci` e `build-android` passarem com sucesso.
+- **Idempotência**: versão já publicada no npm é silenciosamente ignorada (sem falha de pipeline).
+- **Dist-tag automático**: versão com sufixo (ex: `1.0.0-rc.1`) → tag `rc`; versão estável → tag `latest`.
+- **Provenance**: todo artefato publicado inclui attestation vinculando ao commit e pipeline.
+- **Autenticação**: `NPM_TOKEN` lido via `secrets.NPM_TOKEN` — nunca exposto em logs.
+
+### Duplo `setup-node` no job `cd`
+
+O job `cd` chama `.github/actions/setup` (que restaura o cache do yarn) e logo depois chama
+`actions/setup-node` novamente com `registry-url`. Isso é intencional: o segundo `setup-node`
+sobrescreve o `.npmrc` com a configuração de autenticação necessária para `NODE_AUTH_TOKEN`
+funcionar com `npm publish`. Sem ele, o token é ignorado.
+
+### Scripts de release local
+
+```bash
+yarn release:rc                 # publica versão pré-release com dist-tag rc
+yarn release:patch              # incrementa patch, publica com dist-tag latest
+yarn release:minor              # incrementa minor, publica com dist-tag latest
+yarn release:major              # incrementa major, publica com dist-tag latest
+yarn release:promote            # promove versão RC existente para dist-tag latest (sem re-publicar)
+```
+
+Todos os scripts de release stable (`patch/minor/major`) executam `prepublishOnly` automaticamente
+(lint + typecheck + testes + build) antes de publicar.
+
+---
+
+## Expo Config Plugin (app.plugin.js)
+
+O arquivo `app.plugin.js` DEVE exportar a função plugin diretamente:
+
+```js
+module.exports = require('./plugin/build/index').default;
+```
+
+O `.default` é obrigatório porque o TypeScript compila `export default` para `exports.default`
+no CJS. Sem ele, o Expo recebe um objeto `{ default: fn }` em vez da função — o runtime do
+Expo consegue resolver, mas o validador do VS Code (Expo extension) emite `INVALID_PLUGIN_IMPORT`.
+
+---
+
 ## Comandos de Desenvolvimento
 
 ```bash
@@ -536,7 +603,9 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 - N/A — sem estado persistente (bugfix/008-fix-print-validation-tests)
 - Markdown (documentation files only — no TypeScript or Kotlin changes) + None (shield.io for badges — external, no build dependency) (feature/009-library-docs)
 - File system — 4 Markdown files at repo roo (feature/009-library-docs)
+- YAML (GitHub Actions), JSON (package.json), Markdown (CHANGELOG.md) — nenhuma alteração em TypeScript ou Kotlin + GitHub Actions (CI/CD platform), npm registry, `actions/checkout@v5`, `actions/setup-node@v4`, `.github/actions/setup` (composite action existente) (feature/010-cicd-npm-deploy)
 
 ## Recent Changes
+- feature/010-cicd-npm-deploy: Adicionado `.github/workflows/ci-cd.yml` com pipeline CI (lint + typecheck + testes JS + build) + build-android (example app) + CD (publish npm com dist-tag automático e idempotência). Corrigido `app.plugin.js` para exportar `.default` explicitamente, eliminando `INVALID_PLUGIN_IMPORT` no VS Code.
 - feature/009-library-docs (commit `8a533fd`): `src/index.ts` agora re-exporta `export type *` de todos os domínios (`activation`, `payment`, `print`, `refund`) além do `PlugPagTransactionResult` compartilhado. Superfície completa de tipos disponível para consumidores da biblioteca.
 - feature/003-payment-methods: Added TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in)

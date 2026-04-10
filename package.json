@@ -1,6 +1,6 @@
 {
   "name": "react-native-pagseguro-plugpag",
-  "version": "0.1.0",
+  "version": "1.0.0-rc.2",
   "description": "Integre facilmente as principais formas de pagamento da PagSeguro em seus aplicativos React Native através deste módulo nativo.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -35,10 +35,16 @@
     "example": "yarn workspace react-native-pagseguro-plugpag-example",
     "clean": "del-cli lib",
     "build:plugin": "tsc --project tsconfig.plugin.json",
-    "prepare": "bob build && yarn build:plugin",
+    "prepare": "yarn build:plugin && bob build",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "yarn lint && yarn typecheck && yarn test && yarn bob build && yarn build:plugin",
+    "release:rc": "npm publish --tag rc",
+    "release:patch": "npm version patch && npm publish --tag latest",
+    "release:minor": "npm version minor && npm publish --tag latest",
+    "release:major": "npm version major && npm publish --tag latest",
+    "release:promote": "npm dist-tag add react-native-pagseguro-plugpag@$(node -p \"require('./package.json').version\") latest"
   },
   "keywords": [
     "react-native",
