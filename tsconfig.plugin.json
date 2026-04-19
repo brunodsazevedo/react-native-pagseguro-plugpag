@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "outDir": "./plugin/build",
+    "rootDir": "./plugin",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2018",
+    "lib": ["ES2018"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "noEmit": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["plugin"]
+}

@@ -1,256 +1,159 @@
-import React, { useState } from 'react';
-
+import { useState } from 'react';
+import { Text, View, Button, StyleSheet, ScrollView } from 'react-native';
 import {
-  StyleSheet,
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-  Modal,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-
-import {
-  useTransactionPaymentEvent,
   doPayment,
-  initializeAndActivatePinPad,
-  refundPayment,
-  plugPag,
-  type PaymentTransactionResponseProps,
+  doAsyncPayment,
+  usePaymentProgress,
+  type PlugPagTransactionResult,
+  type PlugPagPaymentProgressEvent,
 } from 'react-native-pagseguro-plugpag';
 
-import LogoImg from './assets/react-native-pagseguro-plugpag-logo.png';
-
 export default function App() {
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [lastPayment, setLastPayment] =
-    useState<PaymentTransactionResponseProps>(
-      {} as PaymentTransactionResponseProps
-    );
+  const [syncResult, setSyncResult] = useState<string>('');
+  const [asyncResult, setAsyncResult] = useState<string>('');
+  const [progressMessages, setProgressMessages] = useState<string[]>([]);
 
-  const eventPayment = useTransactionPaymentEvent();
+  usePaymentProgress((event: PlugPagPaymentProgressEvent) => {
+    const msg = event.customMessage
+      ? `[${event.eventCode}] ${event.customMessage}`
+      : `[${event.eventCode}]`;
+    setProgressMessages((prev) => [...prev, msg]);
+  });
 
-  async function handleInitializeAndActivatePinPad() {
-    try {
-      const data = await initializeAndActivatePinPad('403938');
-
-      if (data.result !== 0) {
-        Alert.alert('Erro ao ativar terminal', data.errorMessage);
-        return;
-      }
-
-      Alert.alert('Terminal ativado com sucesso!');
-    } catch (error) {
-      console.log(error);
-      Alert.alert('Erro ao ativar terminal');
-    }
+  function formatResult(result: PlugPagTransactionResult): string {
+    return JSON.stringify(result, null, 2);
   }
 
-  async function handleDoPaymentCreditType() {
-    try {
-      setIsModalVisible(true);
+  function formatError(error: unknown): string {
+    const e = error as Error & {
+      code?: string;
+      userInfo?: { message: string };
+    };
+    return `${e.code ?? 'ERROR'}: ${e.userInfo?.message ?? e.message}`;
+  }
 
-      const data = await doPayment({
-        amount: 2500,
-        type: plugPag.paymentTypes.CREDIT,
-        printReceipt: true,
+  async function handleCreditSync() {
+    setProgressMessages([]);
+    setSyncResult('Aguardando...');
+    try {
+      const result = await doPayment({
+        type: 'CREDIT',
+        amount: 1000,
+        installmentType: 'A_VISTA',
         installments: 1,
-        installmentType: plugPag.installmentTypes.BUYER_INSTALLMENT,
-        userReference: 'test',
       });
-
-      setLastPayment(data);
-      setIsModalVisible(false);
-
-      Alert.alert('Transação concluída com sucesso');
+      setSyncResult(formatResult(result));
     } catch (error) {
-      console.log(error);
-      setIsModalVisible(false);
-
-      Alert.alert('Erro ao concluir transação');
+      setSyncResult(formatError(error));
     }
   }
 
-  async function handleDoPaymentDebitType() {
+  async function handleDebitSync() {
+    setProgressMessages([]);
+    setSyncResult('Aguardando...');
     try {
-      setIsModalVisible(true);
-
-      const data = await doPayment({
-        amount: 2500,
-        type: plugPag.paymentTypes.DEBIT,
-        printReceipt: true,
+      const result = await doPayment({
+        type: 'DEBIT',
+        amount: 2000,
+        installmentType: 'A_VISTA',
         installments: 1,
-        installmentType: plugPag.installmentTypes.BUYER_INSTALLMENT,
-        userReference: 'test',
       });
-
-      console.log(data);
-
-      setIsModalVisible(false);
+      setSyncResult(formatResult(result));
     } catch (error) {
-      console.log(error);
-      setIsModalVisible(false);
+      setSyncResult(formatError(error));
     }
   }
 
-  async function handleRefundLastTransaction() {
+  async function handlePixSync() {
+    setProgressMessages([]);
+    setSyncResult('Aguardando...');
     try {
-      setIsModalVisible(true);
-
-      const response = await refundPayment({
-        transactionCode: lastPayment.transactionCode!,
-        transactionId: lastPayment.transactionId!,
-        printReceipt: true,
+      const result = await doPayment({
+        type: 'PIX',
+        amount: 3000,
+        installmentType: 'A_VISTA',
+        installments: 1,
       });
-
-      setIsModalVisible(false);
-
-      if (response.result !== 0) {
-        Alert.alert('Estorno', 'Ocorreu um erro ao efetuar estorno');
-        return;
-      }
-
-      Alert.alert('Estorno efetuado com sucesso');
-
-      setLastPayment({} as PaymentTransactionResponseProps);
+      setSyncResult(formatResult(result));
     } catch (error) {
-      console.log(error);
+      setSyncResult(formatError(error));
+    }
+  }
 
-      setIsModalVisible(false);
-      Alert.alert('Estorno', 'Ocorreu um erro ao efetuar estorno');
+  async function handleCreditAsync() {
+    setProgressMessages([]);
+    setAsyncResult('Aguardando...');
+    try {
+      const result = await doAsyncPayment({
+        type: 'CREDIT',
+        amount: 1000,
+        installmentType: 'A_VISTA',
+        installments: 1,
+      });
+      setAsyncResult(formatResult(result));
+    } catch (error) {
+      setAsyncResult(formatError(error));
     }
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={[styles.titleHeader, styles.space]}>
-          React Native Pagseguro PlugPag
-        </Text>
-
-        <Image source={LogoImg} style={styles.logo} />
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.section}>doPayment (síncrono)</Text>
+      <View style={styles.row}>
+        <Button title="Crédito R$10" onPress={handleCreditSync} />
+        <Button title="Débito R$20" onPress={handleDebitSync} />
+        <Button title="PIX R$30" onPress={handlePixSync} />
       </View>
+      {syncResult !== '' && <Text style={styles.result}>{syncResult}</Text>}
 
-      <TouchableOpacity
-        onPress={handleInitializeAndActivatePinPad}
-        style={[styles.button, styles.space]}
-      >
-        <Text style={styles.textButton}>Inicializar e ativar o Pin Pad</Text>
-      </TouchableOpacity>
+      <Text style={styles.section}>doAsyncPayment (assíncrono)</Text>
+      <Button title="Crédito R$10 (Async)" onPress={handleCreditAsync} />
+      {asyncResult !== '' && <Text style={styles.result}>{asyncResult}</Text>}
 
-      <TouchableOpacity
-        onPress={handleDoPaymentCreditType}
-        style={[styles.button, styles.space]}
-      >
-        <Text style={styles.textButton}>Pagar R$ 25 no crédito</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={handleDoPaymentDebitType}
-        style={[styles.button, styles.space]}
-      >
-        <Text style={styles.textButton}>Pagar R$ 25 no débito</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        disabled={!lastPayment.transactionId}
-        onPress={handleRefundLastTransaction}
-        style={[
-          styles.button,
-          styles.space,
-          !lastPayment.transactionId && { opacity: 0.3 },
-        ]}
-      >
-        <Text style={styles.textButton}>Estornar última transação</Text>
-      </TouchableOpacity>
-
-      <Modal transparent visible={isModalVisible}>
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>
-              {eventPayment.message ?? 'PROCESSANDO'}
+      {progressMessages.length > 0 && (
+        <>
+          <Text style={styles.section}>Eventos de Progresso</Text>
+          {progressMessages.map((msg, i) => (
+            <Text key={i} style={styles.progress}>
+              {msg}
             </Text>
-
-            <View style={styles.modalBox}>
-              <ActivityIndicator size="large" color="#00DDFC" />
-            </View>
-          </View>
-        </View>
-      </Modal>
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 24,
-
-    backgroundColor: 'white',
-  },
-  header: {
-    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
+    gap: 8,
   },
-  logo: {
-    width: 180,
-    height: 180,
-  },
-  titleHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  button: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    padding: 12,
-
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#00DDFC',
-  },
-  textButton: {
+  section: {
     fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#00DDFC',
+    marginTop: 16,
+    alignSelf: 'flex-start',
   },
-  space: {
-    marginBottom: 12,
+  row: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 22,
+  result: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    backgroundColor: '#f0f0f0',
+    padding: 8,
+    borderRadius: 4,
+    alignSelf: 'stretch',
   },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  modalBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
+  progress: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#555',
+    alignSelf: 'flex-start',
   },
 });

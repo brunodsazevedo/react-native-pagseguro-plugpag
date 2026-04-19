@@ -1,21 +1,26 @@
 {
   "name": "react-native-pagseguro-plugpag",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Integre facilmente as principais formas de pagamento da PagSeguro em seus aplicativos React Native através deste módulo nativo.",
-  "main": "lib/commonjs/index",
-  "module": "lib/module/index",
-  "types": "lib/typescript/src/index.d.ts",
-  "react-native": "src/index",
-  "source": "src/index",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json",
+    "./app.plugin": "./app.plugin.js",
+    "./app.plugin.js": "./app.plugin.js"
+  },
   "files": [
     "src",
     "lib",
     "android",
-    "ios",
-    "cpp",
-    "*.podspec",
-    "!lib/typescript/example",
-    "!ios/build",
+    "app.plugin.js",
+    "plugin/build",
+    "react-native.config.js",
     "!android/build",
     "!android/gradle",
     "!android/gradlew",
@@ -27,27 +32,28 @@
     "!**/.*"
   ],
   "scripts": {
-    "test": "jest",
-    "typecheck": "tsc --noEmit",
+    "example": "yarn workspace react-native-pagseguro-plugpag-example",
+    "clean": "del-cli lib",
+    "build:plugin": "tsc --project tsconfig.plugin.json",
+    "prepare": "yarn build:plugin && bob build",
+    "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "prepack": "yarn build:plugin && bob build",
-    "release": "yarn build:plugin && release-it",
-    "example": "yarn --cwd example",
-    "build:android": "cd example/android && ./gradlew assembleDebug --no-daemon --console=plain -PreactNativeArchitectures=arm64-v8a",
-    "build:ios": "cd example/ios && xcodebuild -workspace PagseguroPlugpagExample.xcworkspace -scheme PagseguroPlugpagExample -configuration Debug -sdk iphonesimulator CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ GCC_OPTIMIZATION_LEVEL=0 GCC_PRECOMPILE_PREFIX_HEADER=YES ASSETCATALOG_COMPILER_OPTIMIZATION=time DEBUG_INFORMATION_FORMAT=dwarf COMPILER_INDEX_STORE_ENABLE=NO",
-    "bootstrap": "yarn example && yarn install && yarn example pods",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build",
-    "expo-module": "expo-module",
-    "build:plugin": "tsc --build plugin"
+    "test": "jest",
+    "prepublishOnly": "yarn lint && yarn typecheck && yarn test && yarn bob build && yarn build:plugin",
+    "release:rc": "npm publish --tag rc",
+    "release:patch": "npm version patch && npm publish --tag latest",
+    "release:minor": "npm version minor && npm publish --tag latest",
+    "release:major": "npm version major && npm publish --tag latest",
+    "release:promote": "npm dist-tag add react-native-pagseguro-plugpag@$(node -p \"require('./package.json').version\") latest"
   },
   "keywords": [
     "react-native",
-    "expo",
-    "android",
-    "pagseguro",
-    "plugpag"
+    "android"
   ],
-  "repository": "https://github.com/brunodsazevedo/react-native-pagseguro-plugpag",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brunodsazevedo/react-native-pagseguro-plugpag.git"
+  },
   "author": "brunodsazevedo <bruno.ds.azevedo@gmail.com> (https://github.com/brunodsazevedo)",
   "license": "MIT",
   "bugs": {
@@ -58,112 +64,47 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@commitlint/config-conventional": "^17.0.2",
-    "@evilmartians/lefthook": "^1.2.2",
-    "@react-native-community/eslint-config": "^3.0.2",
-    "@release-it/conventional-changelog": "^5.0.0",
-    "@types/jest": "^28.1.2",
-    "@types/react": "~17.0.21",
-    "@types/react-native": "0.70.0",
-    "commitlint": "^17.0.2",
-    "del-cli": "^5.0.0",
-    "eslint": "^8.4.1",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-prettier": "^4.0.0",
-    "expo": "^47.0.0",
-    "expo-module-scripts": "^3.0.11",
-    "expo-modules-core": "^1.5.10",
-    "jest": "^28.1.1",
-    "pod-install": "^0.1.0",
-    "prettier": "^2.0.5",
-    "react": "18.2.0",
-    "react-native": "0.72.4",
-    "react-native-builder-bob": "^0.20.0",
-    "release-it": "^15.0.0",
-    "turbo": "^1.10.7",
-    "typescript": "^5.0.2"
-  },
-  "resolutions": {
-    "@types/react": "17.0.21"
+    "@eslint/compat": "^1.3.2",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.35.0",
+    "@expo/config-plugins": "^9.0.0",
+    "@react-native/babel-preset": "0.83.0",
+    "@react-native/eslint-config": "0.83.0",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^29.5.14",
+    "@types/react": "^19.1.12",
+    "@types/react-test-renderer": "^19",
+    "del-cli": "^6.0.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^29.7.0",
+    "prettier": "^2.8.8",
+    "react": "19.2.0",
+    "react-native": "0.83.2",
+    "react-native-builder-bob": "^0.40.18",
+    "react-test-renderer": "19.2.0",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "expo": ">=47.0.0",
     "react": "*",
     "react-native": "*"
   },
-  "peerDependenciesMeta": {
-    "expo": {
-      "optional": true
-    }
-  },
-  "engines": {
-    "node": ">= 16.0.0"
-  },
-  "jest": {
-    "preset": "react-native",
-    "modulePathIgnorePatterns": [
-      "<rootDir>/example/node_modules",
-      "<rootDir>/lib/"
-    ]
-  },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
-  },
-  "release-it": {
-    "git": {
-      "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
-    },
-    "npm": {
-      "publish": true
-    },
-    "github": {
-      "release": true
-    },
-    "plugins": {
-      "@release-it/conventional-changelog": {
-        "preset": "angular"
-      }
-    }
-  },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "@react-native-community",
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": [
-        "error",
-        {
-          "quoteProps": "consistent",
-          "singleQuote": true,
-          "tabWidth": 2,
-          "trailingComma": "es5",
-          "useTabs": false
-        }
-      ]
-    }
-  },
-  "eslintIgnore": [
-    "node_modules/",
-    "lib/"
+  "workspaces": [
+    "example"
   ],
-  "prettier": {
-    "quoteProps": "consistent",
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "es5",
-    "useTabs": false
-  },
+  "packageManager": "yarn@4.11.0",
   "react-native-builder-bob": {
     "source": "src",
     "output": "lib",
     "targets": [
-      "commonjs",
-      "module",
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
       [
         "typescript",
         {
@@ -171,5 +112,39 @@
         }
       ]
     ]
+  },
+  "codegenConfig": {
+    "name": "PagseguroPlugpagSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.pagseguroplugpag"
+    }
+  },
+  "prettier": {
+    "quoteProps": "consistent",
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "useTabs": false
+  },
+  "jest": {
+    "preset": "react-native",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/example/node_modules",
+      "<rootDir>/lib/"
+    ],
+    "haste": {
+      "defaultPlatform": "android"
+    }
+  },
+  "create-react-native-library": {
+    "type": "turbo-module",
+    "languages": "kotlin",
+    "tools": [
+      "eslint",
+      "jest"
+    ],
+    "version": "0.57.2"
   }
 }
