@@ -82,6 +82,10 @@ jobs:
         run: |
           /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
 
+      - name: Build Expo config plugin
+        if: env.turbo_cache_hit != 1
+        run: yarn build:plugin
+
       - name: Prebuild expo app for Android
         if: env.turbo_cache_hit != 1
         run: |
