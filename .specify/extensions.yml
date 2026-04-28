@@ -98,6 +98,13 @@ hooks:
     prompt: Commit specification changes?
     description: Auto-commit after specification
     condition: null
+  - extension: branch-convention
+    command: speckit.branch-convention.rename
+    enabled: true
+    optional: false
+    prompt: Rename branch to match naming convention after specification?
+    description: Auto-rename current branch to match configured naming convention after /specify
+    condition: null
   after_clarify:
   - extension: git
     command: speckit.git.commit
