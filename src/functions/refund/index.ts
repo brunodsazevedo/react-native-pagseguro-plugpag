@@ -1,10 +1,11 @@
 import { Platform } from 'react-native';
 
+import { PlugPagVoidType } from './types';
+
 import type { Spec } from '../../NativePagseguroPlugpag';
 import type { PlugPagTransactionResult } from '../../types/sharedTypes';
 import type { PlugPagRefundRequest } from './types';
 
-export { PlugPagVoidType } from './types';
 export type { PlugPagRefundRequest, PlugPagVoidTypeValue } from './types';
 
 // EXCEPTION: require() is necessary here — NativePagseguroPlugpag.ts calls
@@ -25,10 +26,12 @@ function validateRefundRequest(data: PlugPagRefundRequest): void {
       '[react-native-pagseguro-plugpag] ERROR: doRefund() — transactionId must not be empty.'
     );
   }
-  const validVoidTypes = ['VOID_PAYMENT', 'VOID_QRCODE'];
+  const validVoidTypes = Object.values(PlugPagVoidType);
   if (!validVoidTypes.includes(data.voidType)) {
     throw new Error(
-      '[react-native-pagseguro-plugpag] ERROR: doRefund() — voidType must be PlugPagVoidType.VOID_PAYMENT or PlugPagVoidType.VOID_QRCODE.'
+      `[react-native-pagseguro-plugpag] ERROR: doRefund() — voidType "${String(
+        data.voidType
+      )}" is not valid. Accepted values: ${validVoidTypes.join(', ')}.`
     );
   }
 }
@@ -44,3 +47,5 @@ export async function doRefund(
   validateRefundRequest(data);
   return getNativeModule().doRefund(data) as Promise<PlugPagTransactionResult>;
 }
+
+export { PlugPagVoidType };

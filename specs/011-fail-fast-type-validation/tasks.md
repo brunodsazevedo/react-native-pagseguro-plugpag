@@ -25,7 +25,7 @@ description: "Task list for bugfix/011-fail-fast-type-validation"
 
 **Purpose**: Establish a passing baseline before any changes.
 
-- [ ] T001 Run `yarn test` from the project root and confirm all existing tests pass — this is the red/green baseline; do not proceed if any test is already failing
+- [X] T001 Run `yarn test` from the project root and confirm all existing tests pass — this is the red/green baseline; do not proceed if any test is already failing
 
 ---
 
@@ -39,8 +39,8 @@ Both tasks target different files and can run in parallel.
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete — US1/US2 depend
 on T002 and US3 depends on T003.
 
-- [ ] T002 [P] In `src/functions/payment/index.ts`, replace `export { PaymentType, InstallmentType } from './types'` with `import { PaymentType, InstallmentType } from './types'` (Grupo 2 — value import, alphabetical order) plus a bare `export { PaymentType, InstallmentType }` at the bottom of the file; verify `yarn test` still passes after this refactor
-- [ ] T003 [P] In `src/functions/refund/index.ts`, replace `export { PlugPagVoidType } from './types'` with `import { PlugPagVoidType } from './types'` (Grupo 2 — value import) plus a bare `export { PlugPagVoidType }` at the bottom of the file; verify `yarn test` still passes after this refactor
+- [X] T002 [P] In `src/functions/payment/index.ts`, replace `export { PaymentType, InstallmentType } from './types'` with `import { PaymentType, InstallmentType } from './types'` (Grupo 2 — value import, alphabetical order) plus a bare `export { PaymentType, InstallmentType }` at the bottom of the file; verify `yarn test` still passes after this refactor
+- [X] T003 [P] In `src/functions/refund/index.ts`, replace `export { PlugPagVoidType } from './types'` with `import { PlugPagVoidType } from './types'` (Grupo 2 — value import) plus a bare `export { PlugPagVoidType }` at the bottom of the file; verify `yarn test` still passes after this refactor
 
 **Checkpoint**: Both import conversions complete and all existing tests still pass.
 
@@ -60,12 +60,12 @@ assert it rejects with a message containing `type "INVALIDO" is not valid` and
 
 > **NOTE: Write these tests FIRST and confirm they FAIL before any implementation**
 
-- [ ] T004 [US1] In `src/__tests__/functions/payment.test.ts`, inside the existing `describe('validatePaymentRequest', ...)` block, add three test cases: (a) `type: 'INVALID' as any` rejects with message containing `type "INVALID" is not valid` and `CREDIT, DEBIT, PIX`; (b) `type: 'credit' as any` (lowercase) rejects with message containing `type "credit" is not valid`; (c) `doAsyncPayment({ ...validRequest, type: 'INVALID' as any })` rejects identically to `doPayment` (FR-007 consistency); run `yarn test` and confirm these three tests FAIL (red phase)
+- [X] T004 [US1] In `src/__tests__/functions/payment.test.ts`, inside the existing `describe('validatePaymentRequest', ...)` block, add three test cases: (a) `type: 'INVALID' as any` rejects with message containing `type "INVALID" is not valid` and `CREDIT, DEBIT, PIX`; (b) `type: 'credit' as any` (lowercase) rejects with message containing `type "credit" is not valid`; (c) `doAsyncPayment({ ...validRequest, type: 'INVALID' as any })` rejects identically to `doPayment` (FR-007 consistency); run `yarn test` and confirm these three tests FAIL (red phase)
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] In `src/functions/payment/index.ts`, inside `validatePaymentRequest`, add a `type` validation block at position 1 (before all existing validations): `const validPaymentTypes = Object.values(PaymentType)` → `if (!validPaymentTypes.includes(data.type))` → throw with message `[react-native-pagseguro-plugpag] ERROR: doPayment() — type "${String(data.type)}" is not valid. Accepted values: ${validPaymentTypes.join(', ')}.`; this task depends on T002 (PaymentType must be an in-scope binding)
-- [ ] T006 [US1] Run `yarn test` — confirm T004 tests now pass and no existing tests regressed (green phase); if any existing test fails, fix before proceeding
+- [X] T005 [US1] In `src/functions/payment/index.ts`, inside `validatePaymentRequest`, add a `type` validation block at position 1 (before all existing validations): `const validPaymentTypes = Object.values(PaymentType)` → `if (!validPaymentTypes.includes(data.type))` → throw with message `[react-native-pagseguro-plugpag] ERROR: doPayment() — type "${String(data.type)}" is not valid. Accepted values: ${validPaymentTypes.join(', ')}.`; this task depends on T002 (PaymentType must be an in-scope binding)
+- [X] T006 [US1] Run `yarn test` — confirm T004 tests now pass and no existing tests regressed (green phase); if any existing test fails, fix before proceeding
 
 **Checkpoint**: User Story 1 is fully functional — `doPayment` and `doAsyncPayment` reject
 invalid `type` values with descriptive errors.
@@ -86,12 +86,12 @@ and `A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR`.
 
 > **NOTE: Write these tests FIRST and confirm they FAIL before any implementation**
 
-- [ ] T007 [US2] In `src/__tests__/functions/payment.test.ts`, inside the existing `describe('validatePaymentRequest', ...)` block, add two test cases: (a) `installmentType: 'PARCELADO' as any` rejects with message containing `installmentType "PARCELADO" is not valid` and `A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR`; (b) `installmentType: null as any` rejects with message containing `installmentType "null" is not valid`; run `yarn test` and confirm these tests FAIL (red phase)
+- [X] T007 [US2] In `src/__tests__/functions/payment.test.ts`, inside the existing `describe('validatePaymentRequest', ...)` block, add two test cases: (a) `installmentType: 'PARCELADO' as any` rejects with message containing `installmentType "PARCELADO" is not valid` and `A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR`; (b) `installmentType: null as any` rejects with message containing `installmentType "null" is not valid`; run `yarn test` and confirm these tests FAIL (red phase)
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] In `src/functions/payment/index.ts`, inside `validatePaymentRequest`, add an `installmentType` validation block at position 2 (immediately after the `type` validation added in T005, before the existing `amount` validation): `const validInstallmentTypes = Object.values(InstallmentType)` → `if (!validInstallmentTypes.includes(data.installmentType))` → throw with message `[react-native-pagseguro-plugpag] ERROR: doPayment() — installmentType "${String(data.installmentType)}" is not valid. Accepted values: ${validInstallmentTypes.join(', ')}.`; this task depends on T002 and T005
-- [ ] T009 [US2] Run `yarn test` — confirm T007 tests now pass and no existing tests regressed (green phase); verify the full `payment.test.ts` suite is green
+- [X] T008 [US2] In `src/functions/payment/index.ts`, inside `validatePaymentRequest`, add an `installmentType` validation block at position 2 (immediately after the `type` validation added in T005, before the existing `amount` validation): `const validInstallmentTypes = Object.values(InstallmentType)` → `if (!validInstallmentTypes.includes(data.installmentType))` → throw with message `[react-native-pagseguro-plugpag] ERROR: doPayment() — installmentType "${String(data.installmentType)}" is not valid. Accepted values: ${validInstallmentTypes.join(', ')}.`; this task depends on T002 and T005
+- [X] T009 [US2] Run `yarn test` — confirm T007 tests now pass and no existing tests regressed (green phase); verify the full `payment.test.ts` suite is green
 
 **Checkpoint**: User Stories 1 AND 2 both work independently — both `type` and
 `installmentType` are validated with descriptive errors.
@@ -112,12 +112,12 @@ and assert it rejects with a message containing `voidType "ESTORNO" is not valid
 
 > **NOTE: Update the existing test FIRST and confirm it FAILS before any implementation**
 
-- [ ] T010 [US3] In `src/__tests__/functions/refund.test.ts`, update the existing `'rejects when voidType is invalid'` test: replace the current `rejects.toThrow('voidType')` assertion with two `expect.objectContaining` assertions — (a) message contains `voidType "INVALID" is not valid`; (b) message contains `VOID_PAYMENT, VOID_QRCODE`; run `yarn test` and confirm this test FAILS (red phase — current message format lacks the received value)
+- [X] T010 [US3] In `src/__tests__/functions/refund.test.ts`, update the existing `'rejects when voidType is invalid'` test: replace the current `rejects.toThrow('voidType')` assertion with two `expect.objectContaining` assertions — (a) message contains `voidType "INVALID" is not valid`; (b) message contains `VOID_PAYMENT, VOID_QRCODE`; run `yarn test` and confirm this test FAILS (red phase — current message format lacks the received value)
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] In `src/functions/refund/index.ts`, inside `validateRefundRequest`, update the `voidType` validation block: derive valid values via `const validVoidTypes = Object.values(PlugPagVoidType)` → update the `if (!validVoidTypes.includes(data.voidType))` throw message to: `[react-native-pagseguro-plugpag] ERROR: doRefund() — voidType "${String(data.voidType)}" is not valid. Accepted values: ${validVoidTypes.join(', ')}.`; this task depends on T003 (PlugPagVoidType must be an in-scope binding)
-- [ ] T012 [US3] Run `yarn test` — confirm T010 test now passes and no existing tests regressed (green phase)
+- [X] T011 [US3] In `src/functions/refund/index.ts`, inside `validateRefundRequest`, update the `voidType` validation block: derive valid values via `const validVoidTypes = Object.values(PlugPagVoidType)` → update the `if (!validVoidTypes.includes(data.voidType))` throw message to: `[react-native-pagseguro-plugpag] ERROR: doRefund() — voidType "${String(data.voidType)}" is not valid. Accepted values: ${validVoidTypes.join(', ')}.`; this task depends on T003 (PlugPagVoidType must be an in-scope binding)
+- [X] T012 [US3] Run `yarn test` — confirm T010 test now passes and no existing tests regressed (green phase)
 
 **Checkpoint**: All three user stories are independently functional — payment type,
 installment type, and refund void type are all validated with descriptive errors.
@@ -128,9 +128,9 @@ installment type, and refund void type are all validated with descriptive errors
 
 **Purpose**: Final quality gates — mandatory per Constituição before any PR.
 
-- [ ] T013 Run `yarn lint` — must exit with zero errors and zero warnings; if any lint error is found, fix it before proceeding (BLOCKING per Constituição v1.3.0)
-- [ ] T014 Run `yarn typecheck` — must exit with zero TypeScript errors (`strict: true`); verify no `any` was introduced without a documented `// EXCEPTION: <reason>` comment
-- [ ] T015 Run full `yarn test` — 100% pass rate across all domains (payment, refund, activation, print); confirm no regressions in any test file not touched by this bugfix
+- [X] T013 Run `yarn lint` — must exit with zero errors and zero warnings; if any lint error is found, fix it before proceeding (BLOCKING per Constituição v1.3.0)
+- [X] T014 Run `yarn typecheck` — must exit with zero TypeScript errors (`strict: true`); verify no `any` was introduced without a documented `// EXCEPTION: <reason>` comment
+- [X] T015 Run full `yarn test` — 100% pass rate across all domains (payment, refund, activation, print); confirm no regressions in any test file not touched by this bugfix
 
 ---
 

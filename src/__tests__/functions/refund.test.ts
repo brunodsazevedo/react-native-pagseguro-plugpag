@@ -93,7 +93,18 @@ describe('validateRefundRequest', () => {
   it('rejects when voidType is invalid', async () => {
     await expect(
       doRefund({ ...validRequest, voidType: 'INVALID' as any })
-    ).rejects.toThrow('voidType');
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('voidType "INVALID" is not valid'),
+      })
+    );
+    await expect(
+      doRefund({ ...validRequest, voidType: 'INVALID' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('VOID_PAYMENT, VOID_QRCODE'),
+      })
+    );
   });
 });
 
