@@ -25,7 +25,10 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
 1. Verify a spec-kit project exists by checking for `.specify/` directory
 2. Load convention config from `.specify/branch-convention.yml`
 3. If no convention is configured, inform the user and suggest running `/speckit.branch-convention.configure` first
-4. Verify the working tree is clean (no uncommitted changes) — renaming with dirty state risks data loss
+4. Check for uncommitted changes (`git status --porcelain`):
+   - If there are uncommitted changes, run `git stash push -u -m "speckit-branch-rename-autoStash"` to save them
+   - Record that a stash was created so it can be restored after renaming
+   - If stash fails, abort and inform the user
 
 ## Outline
 
@@ -66,17 +69,22 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
    - `tasks.md` header metadata
    - Any cross-references between features
 
-7. **Report**: Output a summary:
+7. **Restore stash** (if one was created in Prerequisites step 4):
+   - Run `git stash pop` to restore the uncommitted changes
+   - If `git stash pop` fails due to conflicts, inform the user and leave stash intact with instructions to resolve manually (`git stash pop` or `git stash show -p`)
+
+8. **Report**: Output a summary:
    - How many branches were renamed
    - How many folders were moved
    - How many artifact references were updated
+   - Whether uncommitted changes were stashed and restored
    - Any items that could not be renamed (e.g., currently checked-out branch conflicts)
    - Suggest next step: `/speckit.branch-convention.validate` to confirm all items are now compliant
 
 ## Rules
 
 - **Never rename without confirmation** — always show the plan first and wait for explicit approval
-- **Clean working tree required** — refuse to rename if there are uncommitted changes
+- **Auto-stash uncommitted changes** — if the working tree is dirty, stash changes automatically before renaming and restore them after; never refuse solely due to uncommitted changes
 - **Use git mv for folders** — preserves git history and tracking
 - **Update all references** — scan artifacts for old names and update to new names
 - **Never rename main/master/develop** — only rename spec-kit feature branches

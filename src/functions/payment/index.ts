@@ -1,5 +1,7 @@
 import { Platform, NativeEventEmitter, NativeModules } from 'react-native';
 
+import { InstallmentType, PaymentType } from './types';
+
 import type { Spec } from '../../NativePagseguroPlugpag';
 import type { PlugPagTransactionResult } from '../../types/sharedTypes';
 import type {
@@ -7,7 +9,6 @@ import type {
   PlugPagPaymentRequest,
 } from './types';
 
-export { PaymentType, InstallmentType } from './types';
 export type {
   PlugPagInstallmentType,
   PlugPagPaymentProgressEvent,
@@ -35,6 +36,22 @@ function getEmitter(): NativeEventEmitter {
 }
 
 function validatePaymentRequest(data: PlugPagPaymentRequest): void {
+  const validPaymentTypes = Object.values(PaymentType);
+  if (!validPaymentTypes.includes(data.type)) {
+    throw new Error(
+      `[react-native-pagseguro-plugpag] ERROR: doPayment() — type "${String(
+        data.type
+      )}" is not valid. Accepted values: ${validPaymentTypes.join(', ')}.`
+    );
+  }
+  const validInstallmentTypes = Object.values(InstallmentType);
+  if (!validInstallmentTypes.includes(data.installmentType)) {
+    throw new Error(
+      `[react-native-pagseguro-plugpag] ERROR: doPayment() — installmentType "${String(
+        data.installmentType
+      )}" is not valid. Accepted values: ${validInstallmentTypes.join(', ')}.`
+    );
+  }
   if (data.amount <= 0) {
     throw new Error(
       '[react-native-pagseguro-plugpag] ERROR: doPayment() — amount must be > 0.'
@@ -111,3 +128,5 @@ export function subscribeToPaymentProgress(
   );
   return () => sub.remove();
 }
+
+export { PaymentType, InstallmentType };

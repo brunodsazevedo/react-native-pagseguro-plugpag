@@ -151,6 +151,74 @@ describe('validatePaymentRequest', () => {
       doPayment({ ...validRequest, userReference: '12345678901' })
     ).rejects.toThrow('userReference');
   });
+
+  it('rejects when type is invalid', async () => {
+    await expect(
+      doPayment({ ...validRequest, type: 'INVALID' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('type "INVALID" is not valid'),
+      })
+    );
+    await expect(
+      doPayment({ ...validRequest, type: 'INVALID' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('CREDIT, DEBIT, PIX'),
+      })
+    );
+  });
+
+  it('rejects when type is lowercase (case-sensitive)', async () => {
+    await expect(
+      doPayment({ ...validRequest, type: 'credit' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('type "credit" is not valid'),
+      })
+    );
+  });
+
+  it('doAsyncPayment rejects invalid type identically to doPayment', async () => {
+    await expect(
+      doAsyncPayment({ ...validRequest, type: 'INVALID' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('type "INVALID" is not valid'),
+      })
+    );
+  });
+
+  it('rejects when installmentType is invalid', async () => {
+    await expect(
+      doPayment({ ...validRequest, installmentType: 'PARCELADO' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'installmentType "PARCELADO" is not valid'
+        ),
+      })
+    );
+    await expect(
+      doPayment({ ...validRequest, installmentType: 'PARCELADO' as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR'
+        ),
+      })
+    );
+  });
+
+  it('rejects when installmentType is null', async () => {
+    await expect(
+      doPayment({ ...validRequest, installmentType: null as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('installmentType "null" is not valid'),
+      })
+    );
+  });
 });
 
 // =============================================================================
