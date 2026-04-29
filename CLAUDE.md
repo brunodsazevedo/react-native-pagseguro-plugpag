@@ -609,3 +609,9 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 - feature/010-cicd-npm-deploy: Adicionado `.github/workflows/ci-cd.yml` com pipeline CI (lint + typecheck + testes JS + build) + build-android (example app) + CD (publish npm com dist-tag automático e idempotência). Corrigido `app.plugin.js` para exportar `.default` explicitamente, eliminando `INVALID_PLUGIN_IMPORT` no VS Code.
 - feature/009-library-docs (commit `8a533fd`): `src/index.ts` agora re-exporta `export type *` de todos os domínios (`activation`, `payment`, `print`, `refund`) além do `PlugPagTransactionResult` compartilhado. Superfície completa de tipos disponível para consumidores da biblioteca.
 - feature/003-payment-methods: Added TypeScript 5.9 (`strict: true`) + Kotlin 2.0.21 + React Native 0.83.2 (New Architecture / TurboModules + JSI), PlugPagServiceWrapper `wrapper:1.33.0`, kotlinx.coroutines (somente `doPayment` — bloqueante por IPC), NativeEventEmitter (RN built-in)
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/011-fail-fast-type-validation/plan.md
+<!-- SPECKIT END -->

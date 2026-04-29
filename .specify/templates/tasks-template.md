@@ -29,7 +29,7 @@ description: "Task list template for feature implementation"
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
   
-  The /speckit.tasks command MUST replace these with actual tasks based on:
+  The /speckit-tasks command MUST replace these with actual tasks based on:
   - User stories from spec.md (with their priorities P1, P2, P3...)
   - Feature requirements from plan.md
   - Entities from data-model.md
@@ -155,7 +155,6 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
-- [ ] TXXX Run `yarn lint` — confirm zero errors or warnings (Constitution PR Checklist)
 - [ ] TXXX Run quickstart.md validation
 
 ---
@@ -247,7 +246,6 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
-- Run `yarn lint` after each implementation phase — it MUST pass before moving to the next phase
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
