@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.0.1] - 2026-04-28
@@ -17,22 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **SDK Setup & Expo Config Plugin** — integração com `PlugPagServiceWrapper 1.33.0` via
-  Maven do PagSeguro; plugin Expo para injeção automática das dependências Android.
-- **PinPad Activation** — `initializeAndActivatePinPad` (síncrono via `Dispatchers.IO`)
-  e `doAsyncInitializeAndActivatePinPad` (assíncrono via listener nativo do SDK).
-- **Payment Methods** — `doPayment` e `doAsyncPayment` para pagamentos Crédito, Débito e
-  PIX; suporte a parcelamento (à vista, parcelado vendedor, parcelado comprador);
-  evento `onPaymentProgress` via NativeEventEmitter.
-- **Refund** — `doRefund` para estorno de pagamentos (`VOID_PAYMENT`) e QR Code
-  (`VOID_QRCODE`).
-- **Custom Printing** — `printFromFile` para impressão de recibos a partir de arquivo;
-  validação de `printerQuality` (LOW/MEDIUM/HIGH/MAX) e `steps` (mínimo 70).
-- **TypeScript Domain Split** — código fonte reorganizado em domínios
-  (`activation`, `payment`, `refund`, `print`); tipagens completas exportadas via
+- **SDK Setup & Expo Config Plugin** — integration with `PlugPagServiceWrapper 1.33.0` via
+  PagSeguro Maven; Expo plugin for automatic Android dependency injection.
+- **PinPad Activation** — `initializeAndActivatePinPad` (synchronous via `Dispatchers.IO`)
+  and `doAsyncInitializeAndActivatePinPad` (asynchronous via native SDK listener).
+- **Payment Methods** — `doPayment` and `doAsyncPayment` for Credit, Debit, and PIX payments;
+  installment support (in full, seller installment, buyer installment);
+  `onPaymentProgress` event via NativeEventEmitter.
+- **Refund** — `doRefund` for payment reversal (`VOID_PAYMENT`) and QR Code (`VOID_QRCODE`).
+- **Custom Printing** — `printFromFile` for receipt printing from file;
+  `printerQuality` validation (LOW/MEDIUM/HIGH/MAX) and `steps` (minimum 70).
+- **TypeScript Domain Split** — source code reorganized into domains
+  (`activation`, `payment`, `refund`, `print`); full typings exported via
   `src/index.ts`; zero `any`; `strict: true` + `verbatimModuleSyntax`.
-- **Documentação completa** — README, API Reference, Contributing Guide, badges de CI e
-  cobertura.
-- **CI/CD automatizado** — GitHub Actions com jobs de lint, typecheck, test, build
-  (biblioteca JS + Android) e publicação automática no npm com provenance ao merge para
-  `main`.
+- **Full documentation** — README, API Reference, Contributing Guide, CI and coverage badges.
+- **Automated CI/CD** — GitHub Actions with lint, typecheck, test, build
+  (JS library + Android) and automatic npm publish with provenance on merge to `main`.
