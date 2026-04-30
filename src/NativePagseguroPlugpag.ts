@@ -11,6 +11,8 @@ export interface Spec extends TurboModule {
   doAsyncReprintCustomerReceipt(): Promise<Object>;
   reprintEstablishmentReceipt(): Promise<Object>;
   doAsyncReprintEstablishmentReceipt(): Promise<Object>;
+  abort(): Promise<Object>;
+  doAsyncAbort(): Promise<Object>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }

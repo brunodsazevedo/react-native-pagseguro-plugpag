@@ -22,7 +22,7 @@ description: "Task list for feature/012 — Abort Operation"
 
 **Purpose**: Create the new domain folder structure as empty module stubs.
 
-- [ ] T001 Create `src/functions/abort/types.ts` and `src/functions/abort/index.ts` as empty module stubs (no exports yet — stubs only to allow imports to resolve during test authoring)
+- [X] T001 Create `src/functions/abort/types.ts` and `src/functions/abort/index.ts` as empty module stubs (no exports yet — stubs only to allow imports to resolve during test authoring)
 
 **Checkpoint**: Folder structure exists — test files and implementation can now reference the module path.
 
@@ -34,8 +34,8 @@ description: "Task list for feature/012 — Abort Operation"
 
 **⚠️ CRITICAL**: No Kotlin implementation can compile until T003 completes. T002 and T003 MUST run sequentially.
 
-- [ ] T002 Add `abort(): Promise<Object>` and `doAsyncAbort(): Promise<Object>` to the `Spec` interface in `src/NativePagseguroPlugpag.ts`
-- [ ] T003 Regenerate Android codegen artifacts — run `cd example/android && ./gradlew generateCodegenArtifactsFromSchema` (mandatory after every change to `NativePagseguroPlugpag.ts`)
+- [X] T002 Add `abort(): Promise<Object>` and `doAsyncAbort(): Promise<Object>` to the `Spec` interface in `src/NativePagseguroPlugpag.ts`
+- [X] T003 Regenerate Android codegen artifacts — run `cd example/android && ./gradlew generateCodegenArtifactsFromSchema` (mandatory after every change to `NativePagseguroPlugpag.ts`)
 
 **Checkpoint**: Foundation ready — `NativePagseguroPlugpagSpec.java` now declares both methods. Kotlin implementation can proceed.
 
@@ -49,18 +49,18 @@ description: "Task list for feature/012 — Abort Operation"
 
 ### Tests for User Story 1 ⚠️ Write FIRST — Confirm ALL FAIL before any implementation
 
-- [ ] T004 [P] [US1] Create `src/__tests__/functions/abort.test.ts` with JS test scenarios JS-A03 and JS-A04 (`abort()` Android success + `PLUGPAG_ABORT_ERROR` rejection) using the native module mock pattern (`jest.mock('../../NativePagseguroPlugpag', ...)`) — run `yarn test` and confirm FAIL
-- [ ] T005 [P] [US1] Append JS test scenarios JS-A05 and JS-A06 to `src/__tests__/functions/abort.test.ts` (`doAsyncAbort()` Android success + `PLUGPAG_ABORT_ERROR` rejection) — confirm FAIL
-- [ ] T006 [P] [US1] Add Kotlin tests KT-A01, KT-A02, KT-A03 (`abort()` — RET_OK resolve, result != RET_OK reject with `PLUGPAG_ABORT_ERROR`, exception reject with `PLUGPAG_INTERNAL_ERROR`) to `android/src/test/java/com/pagseguroplugpag/PagseguroPlugpagModuleTest.kt` — confirm FAIL
-- [ ] T007 [P] [US1] Add Kotlin tests KT-A04, KT-A05, KT-A06, KT-A07 (`doAsyncAbort()` — `onAbortRequested(true)` resolve, `onAbortRequested(false)` reject, `onError(msg)` reject, exception before listener reject) to `android/src/test/java/com/pagseguroplugpag/PagseguroPlugpagModuleTest.kt` — confirm FAIL
+- [X] T004 [P] [US1] Create `src/__tests__/functions/abort.test.ts` with JS test scenarios JS-A03 and JS-A04 (`abort()` Android success + `PLUGPAG_ABORT_ERROR` rejection) using the native module mock pattern (`jest.mock('../../NativePagseguroPlugpag', ...)`) — run `yarn test` and confirm FAIL
+- [X] T005 [P] [US1] Append JS test scenarios JS-A05 and JS-A06 to `src/__tests__/functions/abort.test.ts` (`doAsyncAbort()` Android success + `PLUGPAG_ABORT_ERROR` rejection) — confirm FAIL
+- [X] T006 [P] [US1] Add Kotlin tests KT-A01, KT-A02, KT-A03 (`abort()` — RET_OK resolve, result != RET_OK reject with `PLUGPAG_ABORT_ERROR`, exception reject with `PLUGPAG_INTERNAL_ERROR`) to `android/src/test/java/com/pagseguroplugpag/PagseguroPlugpagModuleTest.kt` — confirm FAIL
+- [X] T007 [P] [US1] Add Kotlin tests KT-A04, KT-A05, KT-A06, KT-A07 (`doAsyncAbort()` — `onAbortRequested(true)` resolve, `onAbortRequested(false)` reject, `onError(msg)` reject, exception before listener reject) to `android/src/test/java/com/pagseguroplugpag/PagseguroPlugpagModuleTest.kt` — confirm FAIL
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Define `PlugPagAbortSuccess` interface (`{ result: 'ok' }`) in `src/functions/abort/types.ts` replacing the empty stub from T001
-- [ ] T009 [US1] Implement `abort()` and `doAsyncAbort()` in `src/functions/abort/index.ts` — each function must include: (1) Level 2 iOS guard throwing `Error` with prefix `[react-native-pagseguro-plugpag] ERROR:` and the exact function name; (2) `getNativeModule()` lazy accessor called only after the guard (EXCEPTION comment per Constituição); (3) return type assertion to `PlugPagAbortSuccess`
-- [ ] T010 [US1] Add `abort()` and `doAsyncAbort()` overrides to `android/src/main/java/com/pagseguroplugpag/PagseguroPlugpagModule.kt` — `abort()` uses `CoroutineScope(Dispatchers.IO).launch` with the documented EXCEPTION comment (blocking IPC); `doAsyncAbort()` uses `plugPag.asyncAbort(object : PlugPagAbortListener { ... })` without coroutines; add `import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener`
-- [ ] T011 [P] [US1] Add `export * from './abort'` to `src/functions/index.ts`
-- [ ] T012 [P] [US1] Add `export type * from './functions/abort/types'` to `src/index.ts`
+- [X] T008 [US1] Define `PlugPagAbortSuccess` interface (`{ result: 'ok' }`) in `src/functions/abort/types.ts` replacing the empty stub from T001
+- [X] T009 [US1] Implement `abort()` and `doAsyncAbort()` in `src/functions/abort/index.ts` — each function must include: (1) Level 2 iOS guard throwing `Error` with prefix `[react-native-pagseguro-plugpag] ERROR:` and the exact function name; (2) `getNativeModule()` lazy accessor called only after the guard (EXCEPTION comment per Constituição); (3) return type assertion to `PlugPagAbortSuccess`
+- [X] T010 [US1] Add `abort()` and `doAsyncAbort()` overrides to `android/src/main/java/com/pagseguroplugpag/PagseguroPlugpagModule.kt` — `abort()` uses `CoroutineScope(Dispatchers.IO).launch` with the documented EXCEPTION comment (blocking IPC); `doAsyncAbort()` uses `plugPag.asyncAbort(object : PlugPagAbortListener { ... })` without coroutines; add `import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener`
+- [X] T011 [P] [US1] Add `export * from './abort'` to `src/functions/index.ts`
+- [X] T012 [P] [US1] Add `export type * from './functions/abort/types'` to `src/index.ts`
 
 **Checkpoint**: `yarn test -- --testPathPattern=abort` passes JS-A03–JS-A06. US1 is independently functional — abort and doAsyncAbort work on Android.
 
@@ -74,11 +74,11 @@ description: "Task list for feature/012 — Abort Operation"
 
 ### Tests for User Story 2 ⚠️ Write FIRST — Confirm FAIL before implementation
 
-- [ ] T013 [US2] Append JS test scenario JS-A07 to `src/__tests__/functions/abort.test.ts` — assert that `OPERATION_ABORTED` is exported from the library and equals `-1028` — confirm FAIL
+- [X] T013 [US2] Append JS test scenario JS-A07 to `src/__tests__/functions/abort.test.ts` — assert that `OPERATION_ABORTED` is exported from the library and equals `-1028` — confirm FAIL
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Add `const OPERATION_ABORTED = -1028 as const` and `export { OPERATION_ABORTED }` to `src/functions/abort/types.ts` — run `yarn test -- --testPathPattern=abort` and confirm JS-A07 passes
+- [X] T014 [US2] Add `const OPERATION_ABORTED = -1028 as const` and `export { OPERATION_ABORTED }` to `src/functions/abort/types.ts` — run `yarn test -- --testPathPattern=abort` and confirm JS-A07 passes
 
 **Checkpoint**: `OPERATION_ABORTED` is importable by library consumers. US2 independently functional.
 
@@ -92,12 +92,12 @@ description: "Task list for feature/012 — Abort Operation"
 
 ### Tests for User Story 3 ⚠️ Write FIRST — Confirm FAIL before implementation
 
-- [ ] T015 [P] [US3] Append JS test scenarios JS-A01 and JS-A02 to `src/__tests__/functions/abort.test.ts` — JS-A01: `abort()` on iOS rejects with `Error` whose message contains `[react-native-pagseguro-plugpag] ERROR:` and `abort()`; JS-A02: same for `doAsyncAbort()` — confirm FAIL
+- [X] T015 [P] [US3] Append JS test scenarios JS-A01 and JS-A02 to `src/__tests__/functions/abort.test.ts` — JS-A01: `abort()` on iOS rejects with `Error` whose message contains `[react-native-pagseguro-plugpag] ERROR:` and `abort()`; JS-A02: same for `doAsyncAbort()` — confirm FAIL
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Verify Level 2 guard in `abort()` in `src/functions/abort/index.ts` uses exact message: `'[react-native-pagseguro-plugpag] ERROR: abort() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'` — adjust if message differs from contract
-- [ ] T017 [US3] Verify Level 2 guard in `doAsyncAbort()` in `src/functions/abort/index.ts` uses exact message: `'[react-native-pagseguro-plugpag] ERROR: doAsyncAbort() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'` — adjust if message differs from contract
+- [X] T016 [US3] Verify Level 2 guard in `abort()` in `src/functions/abort/index.ts` uses exact message: `'[react-native-pagseguro-plugpag] ERROR: abort() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'` — adjust if message differs from contract
+- [X] T017 [US3] Verify Level 2 guard in `doAsyncAbort()` in `src/functions/abort/index.ts` uses exact message: `'[react-native-pagseguro-plugpag] ERROR: doAsyncAbort() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'` — adjust if message differs from contract
 
 **Checkpoint**: `yarn test -- --testPathPattern=abort` passes all 7 JS scenarios (JS-A01–JS-A07). US3 independently functional.
 
@@ -105,9 +105,9 @@ description: "Task list for feature/012 — Abort Operation"
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
-- [ ] T018 Run `yarn lint` — fix any ESLint violations in `src/functions/abort/`, `src/functions/index.ts`, `src/index.ts`, and `src/NativePagseguroPlugpag.ts`
-- [ ] T019 [P] Run `yarn typecheck` — fix any TypeScript strict-mode errors; confirm zero `any` in abort domain
-- [ ] T020 [P] Run `yarn test` — confirm full suite passes and abort test file reports exactly 7 passing scenarios (JS-A01–JS-A07)
+- [X] T018 Run `yarn lint` — fix any ESLint violations in `src/functions/abort/`, `src/functions/index.ts`, `src/index.ts`, and `src/NativePagseguroPlugpag.ts`
+- [X] T019 [P] Run `yarn typecheck` — fix any TypeScript strict-mode errors; confirm zero `any` in abort domain
+- [X] T020 [P] Run `yarn test` — confirm full suite passes and abort test file reports exactly 7 passing scenarios (JS-A01–JS-A07)
 
 ---
 
