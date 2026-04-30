@@ -613,5 +613,5 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/011-fail-fast-type-validation/plan.md
+at specs/012-abort-operation/plan.md
 <!-- SPECKIT END -->
