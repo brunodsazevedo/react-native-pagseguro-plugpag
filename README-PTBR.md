@@ -347,6 +347,62 @@ Use as variantes síncronas para fluxos de reimpressão simples. Use as variante
 
 ---
 
+### Cancelando uma Operação
+
+Cancele qualquer operação em andamento no terminal (pagamento, estorno, ativação). Útil quando o terminal está aguardando a inserção do cartão e o operador deseja cancelar sem esperar o timeout.
+
+**Cancelamento síncrono** (recomendado — aguarda a confirmação do terminal):
+
+```typescript
+import { abort } from 'react-native-pagseguro-plugpag';
+import type { PlugPagAbortSuccess } from 'react-native-pagseguro-plugpag';
+
+try {
+  const result: PlugPagAbortSuccess = await abort();
+  console.log('Cancelado:', result.result); // 'ok'
+} catch (error) {
+  console.error('Falha no cancelamento:', error);
+}
+```
+
+**Cancelamento assíncrono** (usa listener nativo do SDK):
+
+```typescript
+import { doAsyncAbort } from 'react-native-pagseguro-plugpag';
+
+try {
+  const result = await doAsyncAbort();
+  console.log('Cancelado:', result.result); // 'ok'
+} catch (error) {
+  console.error('Falha no cancelamento:', error);
+}
+```
+
+**Detectando um pagamento cancelado:**
+
+Quando `abort()` é chamado durante um pagamento, a Promise de `doPayment` ou `doAsyncPayment` é rejeitada com `PLUGPAG_PAYMENT_ERROR`. Use a constante `OPERATION_ABORTED` para identificar esse caso:
+
+```typescript
+import { doAsyncPayment, abort, OPERATION_ABORTED } from 'react-native-pagseguro-plugpag';
+
+// Em algum handler de UI:
+const paymentPromise = doAsyncPayment({ /* ... */ });
+
+// Se o operador cancelar:
+await abort();
+
+// A promise de pagamento rejeita com result === OPERATION_ABORTED (-1028)
+try {
+  await paymentPromise;
+} catch (error: any) {
+  if (error?.userInfo?.result === OPERATION_ABORTED) {
+    console.log('Pagamento cancelado pelo operador');
+  }
+}
+```
+
+---
+
 ### Hook de Progresso de Pagamento
 
 Assine eventos de progresso de pagamento em tempo real durante uma chamada `doPayment` ou `doAsyncPayment`:
@@ -400,6 +456,8 @@ function PaymentScreen() {
 | `reprintEstablishmentReceipt` | — | `Promise<PrintResult>` | Reimprimi a via do estabelecimento do último comprovante (síncrono) |
 | `doAsyncReprintCustomerReceipt` | — | `Promise<PrintResult>` | Reimprimi a via do cliente usando o listener assíncrono nativo do SDK |
 | `doAsyncReprintEstablishmentReceipt` | — | `Promise<PrintResult>` | Reimprimi a via do estabelecimento usando o listener assíncrono nativo do SDK |
+| `abort` | — | `Promise<PlugPagAbortSuccess>` | Cancela qualquer operação em andamento no terminal de forma síncrona (I/O bloqueante) |
+| `doAsyncAbort` | — | `Promise<PlugPagAbortSuccess>` | Cancela qualquer operação em andamento no terminal usando o listener assíncrono nativo do SDK |
 
 ---
 
@@ -484,6 +542,12 @@ function PaymentScreen() {
 |-------------|------|-------------|-----------|
 | `result` | `'ok'` | Sim | Sempre `'ok'` na ativação bem-sucedida |
 
+#### `PlugPagAbortSuccess`
+
+| Propriedade | Tipo | Obrigatório | Descrição |
+|-------------|------|-------------|-----------|
+| `result` | `'ok'` | Sim | Sempre `'ok'` no cancelamento bem-sucedido |
+
 ---
 
 ### Constantes
@@ -526,6 +590,12 @@ function PaymentScreen() {
 |-----------|-------|-----------|
 | `MIN_PRINTER_STEPS` | `70` | Passos mínimos recomendados de avanço de linha após a impressão |
 
+#### `OPERATION_ABORTED`
+
+| Constante | Valor | Descrição |
+|-----------|-------|-----------|
+| `OPERATION_ABORTED` | `-1028` | Código de resultado retornado por `doPayment`/`doAsyncPayment` quando a operação é cancelada via `abort()` |
+
 ---
 
 ### Códigos de Erro
@@ -558,6 +628,13 @@ function PaymentScreen() {
 | `PLUGPAG_PRINT_ERROR` | SDK retorna `result != RET_OK` | O SDK PagBank reportou um erro de impressora |
 | `PLUGPAG_INTERNAL_ERROR` | Exceção inesperada capturada | Falha de IPC, serviço inacessível ou estado inesperado do SDK |
 | `PLUGPAG_VALIDATION_ERROR` | Parâmetros de entrada inválidos | `filePath` está vazio, `steps` < 0 ou `printerQuality` fora do intervalo 1–4 |
+
+#### Cancelamento
+
+| Código de Erro | Quando é Lançado | Significado |
+|----------------|-----------------|-------------|
+| `PLUGPAG_ABORT_ERROR` | SDK retorna `result != RET_OK` ou `onAbortRequested(false)` | O terminal não confirmou a solicitação de cancelamento |
+| `PLUGPAG_INTERNAL_ERROR` | Exceção inesperada capturada | Falha de IPC, serviço inacessível ou estado inesperado do SDK |
 
 ---
 
