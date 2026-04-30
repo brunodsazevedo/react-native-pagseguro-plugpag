@@ -346,6 +346,62 @@ Use the synchronous variants for straightforward reprint flows. Use the async va
 
 ---
 
+### Aborting an Operation
+
+Cancel any in-progress terminal operation (payment, refund, activation). Useful when the terminal is waiting for card insertion and the operator wants to cancel without waiting for the timeout.
+
+**Synchronous abort** (recommended — waits for terminal confirmation):
+
+```typescript
+import { abort } from 'react-native-pagseguro-plugpag';
+import type { PlugPagAbortSuccess } from 'react-native-pagseguro-plugpag';
+
+try {
+  const result: PlugPagAbortSuccess = await abort();
+  console.log('Aborted:', result.result); // 'ok'
+} catch (error) {
+  console.error('Abort failed:', error);
+}
+```
+
+**Asynchronous abort** (uses native SDK listener):
+
+```typescript
+import { doAsyncAbort } from 'react-native-pagseguro-plugpag';
+
+try {
+  const result = await doAsyncAbort();
+  console.log('Aborted:', result.result); // 'ok'
+} catch (error) {
+  console.error('Abort failed:', error);
+}
+```
+
+**Detecting an aborted payment:**
+
+When `abort()` is called during a payment, the `doPayment` or `doAsyncPayment` Promise rejects with `PLUGPAG_PAYMENT_ERROR`. Use the `OPERATION_ABORTED` constant to detect this case:
+
+```typescript
+import { doAsyncPayment, abort, OPERATION_ABORTED } from 'react-native-pagseguro-plugpag';
+
+// In some UI handler:
+const paymentPromise = doAsyncPayment({ /* ... */ });
+
+// If operator cancels:
+await abort();
+
+// The payment promise rejects with result === OPERATION_ABORTED (-1028)
+try {
+  await paymentPromise;
+} catch (error: any) {
+  if (error?.userInfo?.result === OPERATION_ABORTED) {
+    console.log('Payment was cancelled by the operator');
+  }
+}
+```
+
+---
+
 ### Payment Progress Hook
 
 Subscribe to real-time payment progress events during a `doPayment` or `doAsyncPayment` call:
@@ -399,6 +455,8 @@ function PaymentScreen() {
 | `reprintEstablishmentReceipt` | — | `Promise<PrintResult>` | Reprints the establishment copy of the last receipt (sync) |
 | `doAsyncReprintCustomerReceipt` | — | `Promise<PrintResult>` | Reprints the customer receipt using the native SDK async listener |
 | `doAsyncReprintEstablishmentReceipt` | — | `Promise<PrintResult>` | Reprints the establishment receipt using the native SDK async listener |
+| `abort` | — | `Promise<PlugPagAbortSuccess>` | Cancels any in-progress terminal operation synchronously (blocking I/O) |
+| `doAsyncAbort` | — | `Promise<PlugPagAbortSuccess>` | Cancels any in-progress terminal operation using the native SDK async listener |
 
 ---
 
@@ -483,6 +541,12 @@ function PaymentScreen() {
 |----------|------|----------|-------------|
 | `result` | `'ok'` | Yes | Always `'ok'` on successful activation |
 
+#### `PlugPagAbortSuccess`
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `result` | `'ok'` | Yes | Always `'ok'` on successful abort |
+
 ---
 
 ### Constants
@@ -525,6 +589,12 @@ function PaymentScreen() {
 |----------|-------|-------------|
 | `MIN_PRINTER_STEPS` | `70` | Minimum recommended line feed steps after printing |
 
+#### `OPERATION_ABORTED`
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `OPERATION_ABORTED` | `-1028` | Result code returned by `doPayment`/`doAsyncPayment` when the operation is aborted via `abort()` |
+
 ---
 
 ### Error Codes
@@ -557,6 +627,13 @@ function PaymentScreen() {
 | `PLUGPAG_PRINT_ERROR` | SDK returns `result != RET_OK` | The PagBank SDK reported a printer error |
 | `PLUGPAG_INTERNAL_ERROR` | Unexpected exception caught | IPC failure, unreachable service, or unexpected SDK state |
 | `PLUGPAG_VALIDATION_ERROR` | Invalid input parameters | `filePath` is empty, `steps` < 0, or `printerQuality` outside 1–4 |
+
+#### Abort
+
+| Error Code | When Thrown | Meaning |
+|------------|-------------|---------|
+| `PLUGPAG_ABORT_ERROR` | SDK returns `result != RET_OK` or `onAbortRequested(false)` | The terminal did not acknowledge the abort request |
+| `PLUGPAG_INTERNAL_ERROR` | Unexpected exception caught | IPC failure, unreachable service, or unexpected SDK state |
 
 ---
 
