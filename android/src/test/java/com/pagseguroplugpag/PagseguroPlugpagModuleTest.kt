@@ -711,4 +711,111 @@ class PagseguroPlugpagModuleTest {
     // promise.reject("PLUGPAG_INTERNAL_ERROR", ...) should be called
     verify(exactly = 0) { mockPromise.resolve(any()) }
   }
+
+  // --- abort() (KT-A01, KT-A02, KT-A03) ---
+
+  @Test
+  fun `abort resolves with result ok when SDK returns RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val successResult = mockk<br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagAbortResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+
+    every { mockPlugPag.abort() } returns successResult
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // abort() should call promise.resolve with { result: 'ok' }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `abort rejects with PLUGPAG_ABORT_ERROR when SDK result is not RET_OK`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val failureResult = mockk<br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagAbortResult>()
+    every { failureResult.result } returns -1
+
+    every { mockPlugPag.abort() } returns failureResult
+
+    // abort() should call promise.reject("PLUGPAG_ABORT_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `abort rejects with PLUGPAG_INTERNAL_ERROR when SDK throws exception`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.abort() } throws RuntimeException("IPC failure")
+
+    // abort() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- doAsyncAbort() (KT-A04, KT-A05, KT-A06, KT-A07) ---
+
+  @Test
+  fun `doAsyncAbort resolves with result ok when onAbortRequested is called with true`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener>()
+    every {
+      mockPlugPag.asyncAbort(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onAbortRequested(true)
+    }
+
+    // doAsyncAbort() should call promise.resolve with { result: 'ok' }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doAsyncAbort rejects with PLUGPAG_ABORT_ERROR when onAbortRequested is called with false`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener>()
+    every {
+      mockPlugPag.asyncAbort(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onAbortRequested(false)
+    }
+
+    // doAsyncAbort() should call promise.reject("PLUGPAG_ABORT_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doAsyncAbort rejects with PLUGPAG_ABORT_ERROR when onError is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener>()
+    every {
+      mockPlugPag.asyncAbort(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError("Terminal error")
+    }
+
+    // doAsyncAbort() should call promise.reject("PLUGPAG_ABORT_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `doAsyncAbort rejects with PLUGPAG_INTERNAL_ERROR when SDK throws before listener`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every {
+      mockPlugPag.asyncAbort(any<br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener>())
+    } throws RuntimeException("IPC failure")
+
+    // doAsyncAbort() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
 }

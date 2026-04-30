@@ -11,6 +11,7 @@ export * from './functions';
 export * from './hooks/usePaymentProgress';
 
 export type { PlugPagTransactionResult } from './types/sharedTypes';
+export type * from './functions/abort/types';
 export type * from './functions/activation/types';
 export type * from './functions/payment/types';
 export type * from './functions/print/types';

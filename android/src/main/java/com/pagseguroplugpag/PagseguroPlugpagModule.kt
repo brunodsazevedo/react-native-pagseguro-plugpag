@@ -11,6 +11,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Arguments
@@ -107,6 +108,64 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
     reactApplicationContext
       .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
       .emit("onPaymentProgress", params)
+  }
+
+  // --- Abort methods (feature/012) ---
+
+  override fun abort(promise: Promise) {
+    // EXCEPTION (Constituição Princípio VI): SDK abort() é bloqueante por IPC — Dispatchers.IO é necessário
+    CoroutineScope(Dispatchers.IO).launch {
+      try {
+        val result = plugPag.abort()
+        withContext(Dispatchers.Main) {
+          if (result.result != PlugPag.RET_OK) {
+            val map = WritableNativeMap()
+            map.putInt("result", result.result)
+            map.putString("errorCode", "ABORT_FAILED")
+            map.putString("message", "Abort failed with result: ${result.result}")
+            promise.reject("PLUGPAG_ABORT_ERROR", map)
+          } else {
+            val successMap = WritableNativeMap()
+            successMap.putString("result", "ok")
+            promise.resolve(successMap)
+          }
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        }
+      }
+    }
+  }
+
+  override fun doAsyncAbort(promise: Promise) {
+    try {
+      plugPag.asyncAbort(object : PlugPagAbortListener {
+        override fun onAbortRequested(abortRequested: Boolean) {
+          if (abortRequested) {
+            val successMap = WritableNativeMap()
+            successMap.putString("result", "ok")
+            promise.resolve(successMap)
+          } else {
+            val map = WritableNativeMap()
+            map.putInt("result", -1)
+            map.putString("errorCode", "ABORT_NOT_REQUESTED")
+            map.putString("message", "Abort was not acknowledged by the terminal")
+            promise.reject("PLUGPAG_ABORT_ERROR", map)
+          }
+        }
+
+        override fun onError(errorMessage: String) {
+          val map = WritableNativeMap()
+          map.putInt("result", -1)
+          map.putString("errorCode", "ABORT_ERROR")
+          map.putString("message", errorMessage)
+          promise.reject("PLUGPAG_ABORT_ERROR", map)
+        }
+      })
+    } catch (e: Exception) {
+      promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+    }
   }
 
   // --- NativeEventEmitter contract (feature/003) ---

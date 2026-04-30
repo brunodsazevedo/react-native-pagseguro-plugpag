@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-30
+
+### Added
+
+- **Abort in-progress terminal operations:** Added the `abort` domain with `abort()` and
+  `doAsyncAbort()` to request cancellation of any operation currently running on the
+  PagBank terminal. The synchronous variant runs the blocking SDK call on
+  `Dispatchers.IO`, while the asynchronous variant uses the native SDK listener.
+- **Abort result typing and detection:** Added `PlugPagAbortSuccess` and exported
+  `OPERATION_ABORTED` (`-1028`) so integrations can distinguish a payment rejected
+  because the terminal operation was cancelled from other `PLUGPAG_PAYMENT_ERROR`
+  failures.
+- **Native and JS coverage:** Added TurboModule spec entries, Android implementations,
+  iOS platform guards, JS unit tests, Kotlin tests for success/error paths, and README
+  documentation in English and Portuguese.
+- **Community feature request:** Implemented from GitHub issue #11, suggested by
+  @marcelozepn. Reference:
+  https://github.com/brunodsazevedo/react-native-pagseguro-plugpag/issues/11#issuecomment-4353226544
+
 ## [1.0.1] - 2026-04-28
 
 ### Fixed
