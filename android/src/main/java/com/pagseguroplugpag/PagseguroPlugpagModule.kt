@@ -28,7 +28,7 @@ import kotlinx.coroutines.withContext
 class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   NativePagseguroPlugpagSpec(reactContext) {
 
-  // SDK wrapper 1.33.0: PlugPag(Context) — AppIdentification é extraída internamente pelo SDK.
+  // SDK wrapper 1.35.0: PlugPag(Context) — AppIdentification é extraída internamente pelo SDK.
   private val plugPag: PlugPag by lazy { PlugPag(reactApplicationContext) }
 
   // --- Helpers for activation (feature/002) ---

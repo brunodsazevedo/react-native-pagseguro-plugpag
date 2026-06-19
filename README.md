@@ -29,7 +29,7 @@ PagBank SmartPOS terminals (A920, A930, P2, S920) run Android and expose a propr
 
 `react-native-pagseguro-plugpag` is a React Native library that bridges the gap. It wraps PagSeguro's official `PlugPagServiceWrapper` SDK in a TurboModule, exposing a fully typed TypeScript API for activating the terminal, accepting payments, processing refunds, and printing receipts — all from JavaScript.
 
-The underlying SDK is `PlugPagServiceWrapper 1.33.0`, distributed via Maven at `https://github.com/pagseguro/PlugPagServiceWrapper/raw/master`. This library manages the Maven configuration automatically via its Expo config plugin, so you do not need to add the SDK dependency manually.
+The underlying SDK is `PlugPagServiceWrapper 1.35.0`, distributed via Maven at `https://github.com/pagseguro/PlugPagServiceWrapper/raw/master`. This library manages the Maven configuration automatically via its Expo config plugin, so you do not need to add the SDK dependency manually.
 
 ---
 
