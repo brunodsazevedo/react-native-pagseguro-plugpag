@@ -70,6 +70,7 @@
     "@expo/config-plugins": "^9.0.0",
     "@react-native/babel-preset": "0.83.0",
     "@react-native/eslint-config": "0.83.0",
+    "@react-native/jest-preset": "0.85.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
     "@types/react": "^19.1.12",
@@ -80,10 +81,10 @@
     "eslint-plugin-prettier": "^5.5.4",
     "jest": "^29.7.0",
     "prettier": "^2.8.8",
-    "react": "19.2.0",
-    "react-native": "0.83.2",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
     "react-native-builder-bob": "^0.40.18",
-    "react-test-renderer": "19.2.0",
+    "react-test-renderer": "19.2.3",
     "turbo": "^2.5.6",
     "typescript": "^5.9.2"
   },
@@ -129,7 +130,7 @@
     "useTabs": false
   },
   "jest": {
-    "preset": "react-native",
+    "preset": "@react-native/jest-preset",
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"

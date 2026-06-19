@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -23,6 +18,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["react-native-pagseguro-plugpag"]
+    "plugins": [
+      "react-native-pagseguro-plugpag",
+      "expo-status-bar"
+    ]
   }
 }

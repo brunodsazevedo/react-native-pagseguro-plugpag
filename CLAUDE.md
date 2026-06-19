@@ -558,6 +558,28 @@ Expo consegue resolver, mas o validador do VS Code (Expo extension) emite `INVAL
 
 ---
 
+## Example — babel.config.js (Restrição SDK 56+)
+
+`example/babel.config.js` DEVE usar apenas `babel-preset-expo` **sem `overrides`**:
+
+```js
+module.exports = function(api) {
+  api.cache(true);
+  return { presets: ['babel-preset-expo'] };
+};
+```
+
+`@expo/metro-config` SDK 56+ vende internamente um `@babel/core` mais novo que rejeita
+string/RegExp em `overrides.include`/`exclude`/`test` quando `loadPartialConfigSync` é
+chamado sem `filename` (cálculo de cache key do transformer Metro). `getConfig` de
+`react-native-builder-bob/babel-config` retorna exatamente esse padrão — não usar.
+
+A resolução do código-fonte da biblioteca (`src/`) no example é responsabilidade do
+`metro.config.js` via `withMetroConfig` (react-native-monorepo-config) com
+`conditions: ['source']`. O `overrides` do babel era redundante.
+
+---
+
 ## Comandos de Desenvolvimento
 
 ```bash
@@ -613,5 +635,5 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/012-abort-operation/plan.md
+at specs/013-expo-sdk-56-upgrade/plan.md
 <!-- SPECKIT END -->
