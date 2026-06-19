@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-06-19
 
 ### Changed
 
@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `android/build.gradle`, Expo config plugin injection in `plugin/index.ts`, and all
   documentation references. Build resolved via the existing PagSeguro Maven repository at
   `https://github.com/pagseguro/PlugPagServiceWrapper/raw/master`.
+- **Expo Config Plugin compatible with Expo SDK 56** — `@expo/config-plugins` dev dependency
+  bumped from `^9.0.0` to `~56.0.9`. The plugin's internal import migrated from the private
+  path (`/build/utils/generateCode`) to the public `CodeGenerator` namespace, removing
+  reliance on an undocumented API that was removed in SDK 56.
+- **Example app updated to Expo SDK 56 / React Native 0.85.3** — `example/` migrated from
+  Expo SDK 55 + React Native 0.83.2 to Expo SDK 56 + React Native 0.85.3. The
+  `babel.config.js` was simplified to `babel-preset-expo` only, removing the
+  `react-native-builder-bob` `overrides` that caused build failures with the stricter
+  `@babel/core` bundled in `@expo/metro-config` SDK 56. This change affects only the
+  development example app and has no impact on the library's public API.
 
 ## [1.1.0] - 2026-04-30
 
