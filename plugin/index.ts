@@ -1,9 +1,9 @@
 import {
   withProjectBuildGradle,
   withAppBuildGradle,
+  CodeGenerator,
   type ConfigPlugin,
 } from '@expo/config-plugins';
-import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 
 const MAVEN_REPO_URL =
   'https://github.com/pagseguro/PlugPagServiceWrapper/raw/master';
@@ -17,7 +17,7 @@ const ALLPROJECTS_REPOSITORIES_ANCHOR =
 
 const withPagSeguroMaven: ConfigPlugin = (config) =>
   withProjectBuildGradle(config, (mod) => {
-    mod.modResults.contents = mergeContents({
+    mod.modResults.contents = CodeGenerator.mergeContents({
       src: mod.modResults.contents,
       newSrc: `    maven { url "${MAVEN_REPO_URL}" }`,
       anchor: ALLPROJECTS_REPOSITORIES_ANCHOR,
@@ -30,7 +30,7 @@ const withPagSeguroMaven: ConfigPlugin = (config) =>
 
 const withPagSeguroDependency: ConfigPlugin = (config) =>
   withAppBuildGradle(config, (mod) => {
-    mod.modResults.contents = mergeContents({
+    mod.modResults.contents = CodeGenerator.mergeContents({
       src: mod.modResults.contents,
       newSrc: `    ${SDK_DEPENDENCY}`,
       anchor: /dependencies\s*\{/,
