@@ -8,7 +8,7 @@ import {
 const MAVEN_REPO_URL =
   'https://github.com/pagseguro/PlugPagServiceWrapper/raw/master';
 const SDK_DEPENDENCY =
-  "implementation 'br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.33.0'";
+  "implementation 'br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.35.0'";
 
 // Anchors against the jitpack line which is unique to allprojects.repositories
 // in the Expo/RN generated build.gradle. This avoids matching buildscript.repositories.

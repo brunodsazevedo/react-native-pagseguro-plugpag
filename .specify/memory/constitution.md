@@ -259,7 +259,7 @@ The API surface MUST map the PlugPagServiceWrapper SDK to the JS layer following
 
 ### SDK Version
 
-The library targets `br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.33.0` via the
+The library targets `br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.35.0` via the
 `https://github.com/pagseguro/PlugPagServiceWrapper/raw/master` Maven repository.
 
 ## Code Standards
