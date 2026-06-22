@@ -2,6 +2,7 @@ package com.pagseguroplugpag
 
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
@@ -60,6 +61,16 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
     map.putString("errorCode", result.errorCode ?: "")
     map.putString("message", result.message?.takeIf { it.isNotEmpty() } ?: "Unknown error")
     return map
+  }
+
+  // --- Helper for maxTimeShowPopup layout (feature/016) ---
+
+  private fun applyMaxTimeShowPopupIfPresent(data: ReadableMap) {
+    if (data.hasKey("maxTimeShowPopup")) {
+      val layout = PlugPagCustomPrinterLayout()
+      layout.maxTimeShowPopup = data.getInt("maxTimeShowPopup")
+      plugPag.setPlugPagCustomPrinterLayout(layout)
+    }
   }
 
   // --- Helpers for payment (feature/003) ---
@@ -259,6 +270,7 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
           }
         })
 
+        applyMaxTimeShowPopupIfPresent(data)
         val result = plugPag.doPayment(paymentData)
 
         withContext(Dispatchers.Main) {
@@ -303,6 +315,7 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
         printReceipt = if (data.hasKey("printReceipt")) data.getBoolean("printReceipt") else false
       )
 
+      applyMaxTimeShowPopupIfPresent(data)
       plugPag.doAsyncPayment(
         paymentData,
         object : PlugPagPaymentListener {
@@ -352,6 +365,7 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
           }
         })
 
+        applyMaxTimeShowPopupIfPresent(data)
         val result = plugPag.voidPayment(voidData)
 
         withContext(Dispatchers.Main) {

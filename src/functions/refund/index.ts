@@ -34,6 +34,14 @@ function validateRefundRequest(data: PlugPagRefundRequest): void {
       )}" is not valid. Accepted values: ${validVoidTypes.join(', ')}.`
     );
   }
+  if (
+    data.maxTimeShowPopup !== undefined &&
+    !(Number.isInteger(data.maxTimeShowPopup) && data.maxTimeShowPopup >= 0)
+  ) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doRefund() — maxTimeShowPopup must be an integer >= 0.'
+    );
+  }
 }
 
 export async function doRefund(

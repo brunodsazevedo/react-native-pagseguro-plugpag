@@ -222,6 +222,70 @@ describe('validatePaymentRequest', () => {
 });
 
 // =============================================================================
+// maxTimeShowPopup — doPayment validation (T004)
+// =============================================================================
+
+describe('maxTimeShowPopup — doPayment', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('iOS guard precedes maxTimeShowPopup validation', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    await expect(
+      doPayment({ ...validRequest, maxTimeShowPopup: -1 } as any)
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('doPayment() is not available on iOS'),
+      })
+    );
+  });
+
+  it('accepts valid maxTimeShowPopup = 10', async () => {
+    mockDoPayment.mockResolvedValueOnce(mockTransactionResult);
+    const result = await doPayment({ ...validRequest, maxTimeShowPopup: 10 });
+    expect(result).toEqual(mockTransactionResult);
+    expect(mockDoPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ maxTimeShowPopup: 10 })
+    );
+  });
+
+  it('accepts maxTimeShowPopup = 0 (imediatamente)', async () => {
+    mockDoPayment.mockResolvedValueOnce(mockTransactionResult);
+    await expect(
+      doPayment({ ...validRequest, maxTimeShowPopup: 0 })
+    ).resolves.toEqual(mockTransactionResult);
+  });
+
+  it('accepts omitted maxTimeShowPopup (comportamento atual preservado)', async () => {
+    mockDoPayment.mockResolvedValueOnce(mockTransactionResult);
+    await expect(doPayment(validRequest)).resolves.toEqual(
+      mockTransactionResult
+    );
+  });
+
+  it('rejects negative maxTimeShowPopup (-1)', async () => {
+    await expect(
+      doPayment({ ...validRequest, maxTimeShowPopup: -1 })
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: doPayment() — maxTimeShowPopup must be an integer >= 0.'
+    );
+  });
+
+  it('rejects non-integer maxTimeShowPopup (1.5)', async () => {
+    await expect(
+      doPayment({ ...validRequest, maxTimeShowPopup: 1.5 } as any)
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: doPayment() — maxTimeShowPopup must be an integer >= 0.'
+    );
+  });
+});
+
+// =============================================================================
 // doPayment — Android normal operation
 // =============================================================================
 
@@ -250,6 +314,61 @@ describe('doPayment — Android normal operation', () => {
     await expect(doPayment(validRequest)).rejects.toMatchObject({
       code: 'PLUGPAG_PAYMENT_ERROR',
     });
+  });
+});
+
+// =============================================================================
+// maxTimeShowPopup — doAsyncPayment validation (T014)
+// =============================================================================
+
+describe('maxTimeShowPopup — doAsyncPayment', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('iOS guard precedes maxTimeShowPopup validation', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    await expect(
+      doAsyncPayment({ ...validRequest, maxTimeShowPopup: -1 } as any)
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'doAsyncPayment() is not available on iOS'
+        ),
+      })
+    );
+  });
+
+  it('accepts valid maxTimeShowPopup = 10', async () => {
+    mockDoAsyncPayment.mockResolvedValueOnce(mockTransactionResult);
+    const result = await doAsyncPayment({
+      ...validRequest,
+      maxTimeShowPopup: 10,
+    });
+    expect(result).toEqual(mockTransactionResult);
+    expect(mockDoAsyncPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ maxTimeShowPopup: 10 })
+    );
+  });
+
+  it('rejects negative maxTimeShowPopup (-1) identically to doPayment', async () => {
+    await expect(
+      doAsyncPayment({ ...validRequest, maxTimeShowPopup: -1 })
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: doPayment() — maxTimeShowPopup must be an integer >= 0.'
+    );
+  });
+
+  it('rejects non-integer maxTimeShowPopup (1.5) identically to doPayment', async () => {
+    await expect(
+      doAsyncPayment({ ...validRequest, maxTimeShowPopup: 1.5 } as any)
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: doPayment() — maxTimeShowPopup must be an integer >= 0.'
+    );
   });
 });
 

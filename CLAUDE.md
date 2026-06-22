@@ -407,6 +407,7 @@ interface PlugPagPaymentRequest {
   installments: number;
   userReference?: string;
   printReceipt?: boolean;
+  maxTimeShowPopup?: number;  // segundos, inteiro >= 0 (feature/016)
 }
 
 interface PlugPagPaymentProgressEvent {
@@ -437,6 +438,7 @@ interface PlugPagRefundRequest {
   transactionId: string;
   voidType: PlugPagVoidTypeValue;
   printReceipt?: boolean;
+  maxTimeShowPopup?: number;  // segundos, inteiro >= 0 (feature/016)
 }
 ```
 
@@ -637,5 +639,5 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/015-wrapper-1-35-upgrade/plan.md
+at specs/016-max-time-show-popup/plan.md
 <!-- SPECKIT END -->

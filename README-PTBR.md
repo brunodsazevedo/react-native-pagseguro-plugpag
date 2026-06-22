@@ -481,6 +481,7 @@ function PaymentScreen() {
 | `installments` | `number` | Sim | Número de parcelas (deve ser ≥ 2 para tipos `PARC_*`) |
 | `userReference` | `string` | Não | Referência interna opcional (máx. 10 caracteres) |
 | `printReceipt` | `boolean` | Não | Se deve imprimir um comprovante após a transação |
+| `maxTimeShowPopup` | `number` | Não | Tempo máximo em **segundos** (inteiro ≥ 0) para o popup de impressão fechar automaticamente. `0` = fechar imediatamente. Omitir preserva o comportamento padrão do SDK (popup aguarda o operador). |
 
 #### `PlugPagRefundRequest`
 
@@ -490,6 +491,7 @@ function PaymentScreen() {
 | `transactionId` | `string` | Sim | ID da transação original do `PlugPagTransactionResult` |
 | `voidType` | `PlugPagVoidTypeValue` | Sim | Método de estorno: `VOID_PAYMENT` (cartão) ou `VOID_QRCODE` (PIX) |
 | `printReceipt` | `boolean` | Não | Se deve imprimir um comprovante após o estorno |
+| `maxTimeShowPopup` | `number` | Não | Tempo máximo em **segundos** (inteiro ≥ 0) para o popup de impressão fechar automaticamente. Omitir preserva o comportamento padrão do SDK. |
 
 #### `PlugPagTransactionResult`
 

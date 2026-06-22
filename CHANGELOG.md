@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`maxTimeShowPopup` support for payment and refund popups:** Added optional field
+  `maxTimeShowPopup?: number` (integer ≥ 0, in **seconds**) to `PlugPagPaymentRequest` and
+  `PlugPagRefundRequest`. When provided, the value is applied to the terminal's print popup
+  layout via `PlugPagCustomPrinterLayout` immediately before `doPayment`, `doAsyncPayment`, or
+  `doRefund`, causing the popup to close automatically after N seconds instead of blocking the
+  Promise waiting for operator confirmation. `0` closes the popup immediately. Omitting the
+  field preserves current behavior (no layout applied). JS-side validation rejects negative
+  values or non-integers before any native call.
+- **Community feature request:** Implemented from GitHub issue #12, suggested by @marcelozepn.
+  Reference: https://github.com/brunodsazevedo/react-native-pagseguro-plugpag/issues/12
+
 ## [1.2.0] - 2026-06-19
 
 ### Changed

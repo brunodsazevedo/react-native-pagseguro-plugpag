@@ -84,6 +84,14 @@ function validatePaymentRequest(data: PlugPagPaymentRequest): void {
       '[react-native-pagseguro-plugpag] ERROR: doPayment() — userReference must be at most 10 characters.'
     );
   }
+  if (
+    data.maxTimeShowPopup !== undefined &&
+    !(Number.isInteger(data.maxTimeShowPopup) && data.maxTimeShowPopup >= 0)
+  ) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: doPayment() — maxTimeShowPopup must be an integer >= 0.'
+    );
+  }
 }
 
 export async function doPayment(
