@@ -480,6 +480,7 @@ function PaymentScreen() {
 | `installments` | `number` | Yes | Number of installments (must be ≥ 2 for `PARC_*` types) |
 | `userReference` | `string` | No | Optional internal reference (max 10 characters) |
 | `printReceipt` | `boolean` | No | Whether to print a receipt after the transaction |
+| `maxTimeShowPopup` | `number` | No | Maximum time in **seconds** (integer ≥ 0) for the print popup to close automatically. `0` = close immediately. Omit to keep the default SDK behavior (popup waits for operator). |
 
 #### `PlugPagRefundRequest`
 
@@ -489,6 +490,7 @@ function PaymentScreen() {
 | `transactionId` | `string` | Yes | Transaction ID from the original `PlugPagTransactionResult` |
 | `voidType` | `PlugPagVoidTypeValue` | Yes | Refund method: `VOID_PAYMENT` (card) or `VOID_QRCODE` (PIX) |
 | `printReceipt` | `boolean` | No | Whether to print a receipt after the refund |
+| `maxTimeShowPopup` | `number` | No | Maximum time in **seconds** (integer ≥ 0) for the print popup to close automatically. Omit to keep the default SDK behavior. |
 
 #### `PlugPagTransactionResult`
 

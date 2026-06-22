@@ -22,6 +22,7 @@ export interface PlugPagPaymentRequest {
   installments: number;
   userReference?: string;
   printReceipt?: boolean;
+  maxTimeShowPopup?: number /** Tempo máximo (em segundos, inteiro >= 0) para o popup de impressão fechar automaticamente. */;
 }
 
 export interface PlugPagPaymentProgressEvent {

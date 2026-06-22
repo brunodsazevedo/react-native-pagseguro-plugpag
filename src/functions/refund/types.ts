@@ -11,4 +11,5 @@ export interface PlugPagRefundRequest {
   transactionId: string;
   voidType: PlugPagVoidTypeValue;
   printReceipt?: boolean;
+  maxTimeShowPopup?: number /** Tempo máximo (em segundos, inteiro >= 0) para o popup de impressão fechar automaticamente. */;
 }

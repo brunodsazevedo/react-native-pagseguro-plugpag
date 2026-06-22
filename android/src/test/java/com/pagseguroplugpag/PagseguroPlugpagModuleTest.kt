@@ -3,6 +3,7 @@ package com.pagseguroplugpag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
@@ -13,6 +14,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import io.mockk.every
 import io.mockk.mockk
@@ -756,6 +758,35 @@ class PagseguroPlugpagModuleTest {
     verify(exactly = 0) { mockPromise.resolve(any()) }
   }
 
+  // --- applyMaxTimeShowPopupIfPresent (T002 — feature/016) ---
+
+  @Test
+  fun `applyMaxTimeShowPopupIfPresent calls setPlugPagCustomPrinterLayout when maxTimeShowPopup is present`() {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns true
+    every { mockData.getInt("maxTimeShowPopup") } returns 10
+
+    val layoutSlot = slot<PlugPagCustomPrinterLayout>()
+    every { mockPlugPag.setPlugPagCustomPrinterLayout(capture(layoutSlot)) } returns Unit
+
+    // This test will fail until applyMaxTimeShowPopupIfPresent is implemented.
+    // Expected: plugPag.setPlugPagCustomPrinterLayout is called once with layout.maxTimeShowPopup == 10
+    verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
+  @Test
+  fun `applyMaxTimeShowPopupIfPresent does NOT call setPlugPagCustomPrinterLayout when maxTimeShowPopup is absent`() {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns false
+
+    // Expected: no call to setPlugPagCustomPrinterLayout
+    verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
   // --- doAsyncAbort() (KT-A04, KT-A05, KT-A06, KT-A07) ---
 
   @Test
@@ -817,5 +848,179 @@ class PagseguroPlugpagModuleTest {
 
     // doAsyncAbort() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
     verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- doPayment com maxTimeShowPopup (T005 — feature/016) ---
+
+  @Test
+  fun `doPayment calls setPlugPagCustomPrinterLayout before doPayment when maxTimeShowPopup is present`() = runTest {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns true
+    every { mockData.getInt("maxTimeShowPopup") } returns 10
+    every { mockData.getString("type") } returns "CREDIT"
+    every { mockData.getString("installmentType") } returns "A_VISTA"
+    every { mockData.getInt("amount") } returns 1000
+    every { mockData.getInt("installments") } returns 1
+    every { mockData.hasKey("userReference") } returns false
+    every { mockData.hasKey("printReceipt") } returns false
+
+    val successResult = mockk<PlugPagTransactionResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.transactionCode } returns "TXN123"
+    every { successResult.transactionId } returns "ID456"
+    every { successResult.date } returns null
+    every { successResult.time } returns null
+    every { successResult.hostNsu } returns null
+    every { successResult.cardBrand } returns null
+    every { successResult.bin } returns null
+    every { successResult.holder } returns null
+    every { successResult.userReference } returns null
+    every { successResult.terminalSerialNumber } returns null
+    every { successResult.amount } returns "1000"
+    every { successResult.availableBalance } returns null
+    every { successResult.nsu } returns null
+    every { successResult.cardApplication } returns null
+    every { successResult.label } returns null
+    every { successResult.holderName } returns null
+    every { successResult.extendedHolderName } returns null
+    every { successResult.autoCode } returns null
+
+    every { mockPlugPag.doPayment(any<PlugPagPaymentData>()) } returns successResult
+
+    // Expected (after T003 and T008 are implemented):
+    // setPlugPagCustomPrinterLayout called once with layout.maxTimeShowPopup == 10,
+    // called BEFORE plugPag.doPayment(...)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doPayment does NOT call setPlugPagCustomPrinterLayout when maxTimeShowPopup is absent`() = runTest {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns false
+
+    // Expected: setPlugPagCustomPrinterLayout is NOT called
+    verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
+  // --- voidPayment com maxTimeShowPopup (T010 — feature/016) ---
+
+  @Test
+  fun `doRefund calls setPlugPagCustomPrinterLayout before voidPayment when maxTimeShowPopup is present`() = runTest {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns true
+    every { mockData.getInt("maxTimeShowPopup") } returns 5
+    every { mockData.getString("voidType") } returns "VOID_PAYMENT"
+    every { mockData.getString("transactionCode") } returns "TXN123"
+    every { mockData.getString("transactionId") } returns "ID456"
+    every { mockData.hasKey("printReceipt") } returns false
+
+    val successResult = mockk<PlugPagTransactionResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.transactionCode } returns "TXN123"
+    every { successResult.transactionId } returns "ID456"
+    every { successResult.date } returns null
+    every { successResult.time } returns null
+    every { successResult.hostNsu } returns null
+    every { successResult.cardBrand } returns null
+    every { successResult.bin } returns null
+    every { successResult.holder } returns null
+    every { successResult.userReference } returns null
+    every { successResult.terminalSerialNumber } returns null
+    every { successResult.amount } returns null
+    every { successResult.availableBalance } returns null
+    every { successResult.nsu } returns null
+    every { successResult.cardApplication } returns null
+    every { successResult.label } returns null
+    every { successResult.holderName } returns null
+    every { successResult.extendedHolderName } returns null
+    every { successResult.autoCode } returns null
+
+    every { mockPlugPag.voidPayment(any<PlugPagVoidData>()) } returns successResult
+
+    // Expected (after T003 and T013 are implemented):
+    // setPlugPagCustomPrinterLayout called once with layout.maxTimeShowPopup == 5,
+    // called BEFORE plugPag.voidPayment(...)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doRefund does NOT call setPlugPagCustomPrinterLayout when maxTimeShowPopup is absent`() = runTest {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns false
+
+    // Expected: setPlugPagCustomPrinterLayout is NOT called
+    verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
+  // --- doAsyncPayment com maxTimeShowPopup (T015 — feature/016) ---
+
+  @Test
+  fun `doAsyncPayment calls setPlugPagCustomPrinterLayout before doAsyncPayment when maxTimeShowPopup is present`() {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns true
+    every { mockData.getInt("maxTimeShowPopup") } returns 15
+    every { mockData.getString("type") } returns "CREDIT"
+    every { mockData.getString("installmentType") } returns "A_VISTA"
+    every { mockData.getInt("amount") } returns 1000
+    every { mockData.getInt("installments") } returns 1
+    every { mockData.hasKey("userReference") } returns false
+    every { mockData.hasKey("printReceipt") } returns false
+
+    val listenerSlot = slot<PlugPagPaymentListener>()
+    val successResult = mockk<PlugPagTransactionResult>()
+    every { successResult.result } returns PlugPag.RET_OK
+    every { successResult.transactionCode } returns "TXN123"
+    every { successResult.transactionId } returns "ID456"
+    every { successResult.date } returns null
+    every { successResult.time } returns null
+    every { successResult.hostNsu } returns null
+    every { successResult.cardBrand } returns null
+    every { successResult.bin } returns null
+    every { successResult.holder } returns null
+    every { successResult.userReference } returns null
+    every { successResult.terminalSerialNumber } returns null
+    every { successResult.amount } returns "1000"
+    every { successResult.availableBalance } returns null
+    every { successResult.nsu } returns null
+    every { successResult.cardApplication } returns null
+    every { successResult.label } returns null
+    every { successResult.holderName } returns null
+    every { successResult.extendedHolderName } returns null
+    every { successResult.autoCode } returns null
+
+    every {
+      mockPlugPag.doAsyncPayment(any<PlugPagPaymentData>(), capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onSuccess(successResult)
+    }
+
+    // Expected (after T003 and T016 are implemented):
+    // setPlugPagCustomPrinterLayout called once with layout.maxTimeShowPopup == 15,
+    // called BEFORE plugPag.doAsyncPayment(...)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `doAsyncPayment does NOT call setPlugPagCustomPrinterLayout when maxTimeShowPopup is absent`() {
+    val mockPlugPag = mockk<PlugPag>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.hasKey("maxTimeShowPopup") } returns false
+
+    // Expected: setPlugPagCustomPrinterLayout is NOT called
+    verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
   }
 }
