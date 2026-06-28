@@ -1,22 +1,22 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.2.0 → 1.3.0 (MINOR — folder structure, import rules, native module access
-  pattern (getNativeModule), and import organization convention added)
+Version change: 1.3.0 → 1.4.0 (MINOR — Principle VI threading rule replaced by an explicit
+  Threading Policy: blocking → Dispatchers.IO; async listener → UiThreadUtil main thread.
+  Corrects the rule that caused Issue #13, materially expanded guidance.)
 Modified sections:
-  - Principle IV: directory structure, import rules between layers, type placement rule
-  - Principle VI: guard placement after domain split; src/index.tsx → src/index.ts
-  - Development Workflow > Before Implementing step 3: type placement criterion updated
-  - Development Workflow > PR Checklist: types item updated
-  - API Contract > Naming Conventions: type/hook/domain file rows updated
-Added sections:
-  - Code Standards > Import Style & Organization (getNativeModule pattern + import order)
-Removed sections: N/A
+  - Principle VI: threading bullet (lines 184-185) replaced with Threading Policy block
+    (blocking vs async-listener thread management + rationale referencing Issue #13)
+Added sections: N/A (threading guidance expanded in-place within Principle VI)
+Removed sections:
+  - Old rule "Threading for SDK calls MUST use the SDK's own async methods directly;
+    Dispatchers.IO / coroutines prohibited unless required" — superseded by Threading Policy
 Templates reviewed:
   - .specify/templates/plan-template.md     ✅ Constitution Check is dynamic; no update required
   - .specify/templates/spec-template.md     ✅ No constitution-specific references; compatible as-is
   - .specify/templates/tasks-template.md    ✅ No path examples affected; compatible as-is
-  - CLAUDE.md                               ⚠ pending — sync M8–M13 in follow-up step
+  - CLAUDE.md                               ⚠ pending — sync threading sections (Princípio VI,
+                                              Padrões Kotlin) in follow-up step
 Deferred TODOs:
   - TODO(RESULT_CODES): Mapear lista completa de result codes da SDK PagBank.
     Ref: https://developer.pagbank.com.br/docs/codigos-de-erro-e-retorno-smartpos
@@ -181,8 +181,35 @@ This library is **exclusively** an Android library targeting PagBank SmartPOS te
 - The `ios/` directory MUST NOT exist in the repository.
 - Pre-authorization (`doPreAutoCreate`, `doEffectuatePreAuto`), sub-acquirer
   (`initializeSubAcquirer`), and APN configuration are **out of scope** for v1.
-- Threading for SDK calls MUST use the SDK's own async methods directly.
-  `Dispatchers.IO` / coroutines wrappers are prohibited unless the SDK requires them.
+- Threading for SDK calls MUST follow the **Threading Policy** below. There is no execution
+  path in which the TurboModule's calling thread may invoke the SDK without explicit thread
+  management — under the New Architecture, TurboModule native methods run on background threads
+  with no prepared `Looper`.
+
+  **Threading Policy**:
+  - **Blocking SDK methods** (synchronous IPC — e.g. `doPayment`, `voidPayment`,
+    `initializeAndActivatePinpad`, `printFromFile`, `reprint*`, `abort`,
+    `calculateInstallments`): MUST run off the calling thread (`Dispatchers.IO` or equivalent)
+    and resolve/reject the Promise on the main thread. Running them on the main thread would
+    cause an ANR.
+  - **Async listener-based SDK methods** (RxJava-delivered callbacks — e.g. `doAsyncPayment`,
+    `doAsyncInitializeAndActivatePinpad`, `doAsyncAbort`, `asyncReprint*`): MUST be invoked and
+    have their callbacks delivered on the **main thread** via `UiThreadUtil.runOnUiThread { }`.
+    The SDK's RxJava callbacks require an active `Looper`, which background TurboModule threads
+    lack on the New Architecture — invoking directly drops the terminal callback silently and
+    the Promise never settles. `CoroutineScope(Dispatchers.Main)` MUST NOT be relied upon for
+    this purpose: it depends on `kotlinx-coroutines-android` providing the Main dispatcher and
+    does not guarantee delivery; `UiThreadUtil` is the canonical, architecture-agnostic API.
+  - Code MUST NOT assume a TurboModule method executes on a thread with a prepared `Looper`.
+  - The `// EXCEPTION (Constituição Princípio VI)` inline comment is no longer required for
+    thread management: correct threading is now the rule, not an exception, and existing
+    comments SHOULD be removed.
+
+  **Rationale**: The original rule ("use the SDK's async methods directly; `Dispatchers.IO` /
+  coroutines prohibited unless required") assumed the SDK manages threading itself. That
+  premise is false — blocking methods need a background thread to avoid ANR, and async methods
+  need a main `Looper` to deliver RxJava callbacks. The literal reading of the old rule was the
+  root cause of the `doAsync*` callbacks never firing on the New Architecture (Issue #13).
 
 #### iOS Runtime Behavior (Two-Level Guard)
 
@@ -389,4 +416,4 @@ Amendments require:
 **Compliance**: All PRs and spec reviews MUST verify compliance with Principles I–VI before merge.
 The `/speckit.plan` Constitution Check gate MUST reference this document.
 
-**Version**: 1.3.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-29
+**Version**: 1.4.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-06-28
