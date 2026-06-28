@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`calculateInstallments` — consulta opções de parcelamento antes da venda:** Nova função
+  pública `calculateInstallments(data: CalculateInstallmentsRequest): Promise<CalculateInstallmentsResult>`
+  no domínio `payment`. Recebe `{ amount: number, installmentType: PlugPagInstallmentType }`
+  e resolve com `{ options: PlugPagInstallment[] }` (cada opção com `quantity`, `amount` e
+  `total` em centavos). A lista pode ser vazia (resultado válido). Validação fail-fast no JS
+  (`amount` deve ser inteiro > 0; `installmentType` no enum existente). Guard de iOS de Nível 2
+  presente. Usa `Dispatchers.IO` internamente (SDK síncrono bloqueante por IPC). Novos tipos
+  exportados: `CalculateInstallmentsRequest`, `PlugPagInstallment`, `CalculateInstallmentsResult`.
+
 ## [1.2.1] - 2026-06-22
 
 ### Added

@@ -13,6 +13,7 @@ export interface Spec extends TurboModule {
   doAsyncReprintEstablishmentReceipt(): Promise<Object>;
   abort(): Promise<Object>;
   doAsyncAbort(): Promise<Object>;
+  calculateInstallments(data: Object): Promise<Object>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }

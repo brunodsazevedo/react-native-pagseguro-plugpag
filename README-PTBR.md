@@ -447,6 +447,7 @@ function PaymentScreen() {
 |--------|-----------|---------|-----------|
 | `initializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Ativa o PinPad de forma síncrona (I/O bloqueante via Dispatchers.IO) |
 | `doAsyncInitializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Ativa o PinPad usando o listener assíncrono nativo do SDK |
+| `calculateInstallments` | `data: CalculateInstallmentsRequest` | `Promise<CalculateInstallmentsResult>` | Retorna as opções de parcelamento para um valor antes de chamar `doPayment` |
 | `doPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processa um pagamento de forma síncrona (I/O bloqueante) |
 | `doAsyncPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processa um pagamento usando o listener assíncrono nativo do SDK |
 | `subscribeToPaymentProgress` | `callback: (event: PlugPagPaymentProgressEvent) => void` | `() => void` | Assina eventos de progresso de pagamento; retorna uma função para cancelar a assinatura |
@@ -470,6 +471,31 @@ function PaymentScreen() {
 ---
 
 ### Tipos e Interfaces
+
+#### `CalculateInstallmentsRequest`
+
+| Propriedade | Tipo | Obrigatório | Descrição |
+|-------------|------|-------------|-----------|
+| `amount` | `number` | Sim | Valor em centavos (inteiro > 0, ex: `10000` = R$ 100,00) |
+| `installmentType` | `PlugPagInstallmentType` | Sim | Plano de parcelamento: `A_VISTA`, `PARC_VENDEDOR` ou `PARC_COMPRADOR` |
+
+#### `PlugPagInstallment`
+
+Uma opção de parcelamento retornada por `calculateInstallments`.
+
+| Propriedade | Tipo | Descrição |
+|-------------|------|-----------|
+| `quantity` | `number` | Número de parcelas |
+| `amount` | `number` | Valor de cada parcela, em centavos |
+| `total` | `number` | Valor total da transação, em centavos |
+
+#### `CalculateInstallmentsResult`
+
+| Propriedade | Tipo | Descrição |
+|-------------|------|-----------|
+| `options` | `PlugPagInstallment[]` | Lista de opções de parcelamento. Pode ser vazia (resultado válido — sem opções disponíveis). |
+
+---
 
 #### `PlugPagPaymentRequest`
 

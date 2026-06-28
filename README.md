@@ -446,6 +446,7 @@ function PaymentScreen() {
 |----------|-----------|---------|-------------|
 | `initializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Activates the PinPad synchronously (blocking I/O via Dispatchers.IO) |
 | `doAsyncInitializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Activates the PinPad using the native SDK async listener |
+| `calculateInstallments` | `data: CalculateInstallmentsRequest` | `Promise<CalculateInstallmentsResult>` | Returns installment options for a given amount before calling `doPayment` |
 | `doPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processes a payment synchronously (blocking I/O) |
 | `doAsyncPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processes a payment using the native SDK async listener |
 | `subscribeToPaymentProgress` | `callback: (event: PlugPagPaymentProgressEvent) => void` | `() => void` | Subscribes to payment progress events; returns an unsubscribe function |
@@ -469,6 +470,31 @@ function PaymentScreen() {
 ---
 
 ### Types & Interfaces
+
+#### `CalculateInstallmentsRequest`
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `amount` | `number` | Yes | Amount in cents (integer > 0, e.g. `10000` = R$ 100,00) |
+| `installmentType` | `PlugPagInstallmentType` | Yes | Installment plan: `A_VISTA`, `PARC_VENDEDOR`, or `PARC_COMPRADOR` |
+
+#### `PlugPagInstallment`
+
+One installment option returned by `calculateInstallments`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `quantity` | `number` | Number of installments |
+| `amount` | `number` | Amount per installment, in cents |
+| `total` | `number` | Total transaction amount, in cents |
+
+#### `CalculateInstallmentsResult`
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `options` | `PlugPagInstallment[]` | List of installment options. May be empty (valid — no options available). |
+
+---
 
 #### `PlugPagPaymentRequest`
 

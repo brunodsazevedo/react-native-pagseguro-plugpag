@@ -6,6 +6,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInstallment
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
@@ -13,6 +14,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
+import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
@@ -1022,5 +1024,94 @@ class PagseguroPlugpagModuleTest {
 
     // Expected: setPlugPagCustomPrinterLayout is NOT called
     verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
+  // --- calculateInstallments (T006/T016 — feature/017) ---
+
+  @Test
+  fun `calculateInstallments resolves with options list when SDK returns installments`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "PARC_COMPRADOR"
+
+    val installment1 = mockk<PlugPagInstallment>()
+    every { installment1.quantity } returns 1
+    every { installment1.amount } returns 10000
+    every { installment1.total } returns 10000
+
+    val installment2 = mockk<PlugPagInstallment>()
+    every { installment2.quantity } returns 2
+    every { installment2.amount } returns 5100
+    every { installment2.total } returns 10200
+
+    every {
+      mockPlugPag.calculateInstallments("10000", PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR)
+    } returns listOf(installment1, installment2)
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // calculateInstallments should call promise.resolve with { options: [{quantity:1,...},{quantity:2,...}] }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `calculateInstallments resolves with empty options when SDK returns empty list`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "A_VISTA"
+
+    every {
+      mockPlugPag.calculateInstallments("10000", PlugPag.INSTALLMENT_TYPE_A_VISTA)
+    } returns emptyList()
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // calculateInstallments should call promise.resolve with { options: [] }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `calculateInstallments rejects with PLUGPAG_INSTALLMENTS_ERROR when PlugPagException is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "PARC_COMPRADOR"
+
+    val exception = mockk<PlugPagException>()
+    every { exception.message } returns "SDK error"
+    every { exception.errorCode } returns "ERR_001"
+    every {
+      mockPlugPag.calculateInstallments(any(), any())
+    } throws exception
+
+    // calculateInstallments should call promise.reject("PLUGPAG_INSTALLMENTS_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `calculateInstallments rejects with PLUGPAG_INTERNAL_ERROR when generic Exception is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "PARC_COMPRADOR"
+
+    every {
+      mockPlugPag.calculateInstallments(any(), any())
+    } throws RuntimeException("IPC failure")
+
+    // calculateInstallments should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
   }
 }

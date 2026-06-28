@@ -348,6 +348,7 @@ outra ação.
 | 007 — TS Domain Split (Clean Code) | `feature/007-ts-domain-split` | ✅ Completo |
 | 009 — Library Docs | `feature/009-library-docs` | ✅ Completo |
 | 010 — CI/CD npm Deploy | `feature/010-cicd-npm-deploy` | ✅ Completo |
+| 017 — Calculate Installments | `feature/017-calculate-installments` | ✅ Completo |
 
 ### Feature/002 — Estado Atual (API Pública)
 
@@ -413,6 +414,21 @@ interface PlugPagPaymentRequest {
 interface PlugPagPaymentProgressEvent {
   eventCode: number;
   customMessage: string | null;
+}
+
+interface CalculateInstallmentsRequest {
+  amount: number;                          // centavos, inteiro > 0
+  installmentType: PlugPagInstallmentType; // A_VISTA | PARC_VENDEDOR | PARC_COMPRADOR
+}
+
+interface PlugPagInstallment {
+  quantity: number; // número de parcelas
+  amount: number;   // valor de cada parcela, em centavos
+  total: number;    // total da transação, em centavos
+}
+
+interface CalculateInstallmentsResult {
+  options: PlugPagInstallment[]; // pode ser []
 }
 
 // --- Print (src/functions/print/types.ts) ---
@@ -639,5 +655,15 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/016-max-time-show-popup/plan.md
+at specs/017-calculate-installments/plan.md
 <!-- SPECKIT END -->
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

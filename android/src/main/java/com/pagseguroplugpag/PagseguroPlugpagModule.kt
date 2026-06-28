@@ -6,12 +6,14 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInstallment
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
@@ -119,6 +121,58 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
     reactApplicationContext
       .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
       .emit("onPaymentProgress", params)
+  }
+
+  // --- Helper for calculateInstallments error (feature/017) ---
+
+  private fun buildInstallmentsErrorUserInfo(e: PlugPagException): WritableNativeMap {
+    val map = WritableNativeMap()
+    map.putInt("result", -1)
+    map.putString("errorCode", e.errorCode ?: "")
+    map.putString("message", e.message ?: "Unknown error")
+    return map
+  }
+
+  // --- calculateInstallments (feature/017) ---
+
+  override fun calculateInstallments(data: ReadableMap, promise: Promise) {
+    // EXCEPTION (Constituição Princípio VI): SDK calculateInstallments é bloqueante por IPC — Dispatchers.IO é necessário
+    CoroutineScope(Dispatchers.IO).launch {
+      try {
+        val installmentType = when (data.getString("installmentType")) {
+          "A_VISTA" -> PlugPag.INSTALLMENT_TYPE_A_VISTA
+          "PARC_VENDEDOR" -> PlugPag.INSTALLMENT_TYPE_PARC_VENDEDOR
+          "PARC_COMPRADOR" -> PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR
+          else -> PlugPag.INSTALLMENT_TYPE_A_VISTA
+        }
+        val saleValue = data.getInt("amount").toString()
+        val installments: List<PlugPagInstallment> =
+          plugPag.calculateInstallments(saleValue, installmentType) ?: emptyList()
+
+        val optionsArray = Arguments.createArray()
+        for (installment in installments) {
+          val item = WritableNativeMap()
+          item.putInt("quantity", installment.quantity)
+          item.putInt("amount", installment.amount)
+          item.putInt("total", installment.total)
+          optionsArray.pushMap(item)
+        }
+        val resultMap = WritableNativeMap()
+        resultMap.putArray("options", optionsArray)
+
+        withContext(Dispatchers.Main) {
+          promise.resolve(resultMap)
+        }
+      } catch (e: PlugPagException) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INSTALLMENTS_ERROR", buildInstallmentsErrorUserInfo(e))
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        }
+      }
+    }
   }
 
   // --- Abort methods (feature/012) ---
