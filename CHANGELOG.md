@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Callbacks `doAsync*` na New Architecture (Issue #13):** os métodos assíncronos
+  `doAsyncPayment`, `doAsyncInitializeAndActivatePinPad`, `doAsyncAbort`,
+  `doAsyncReprintCustomerReceipt` e `doAsyncReprintEstablishmentReceipt` invocavam o SDK PlugPag
+  diretamente na thread do TurboModule, que na New Architecture não possui `Looper` preparado —
+  os callbacks terminais RxJava (`onSuccess`/`onError`) eram descartados silenciosamente e a
+  Promise nunca concluía (o evento `onPaymentProgress` continuava chegando, daí o sintoma
+  assimétrico). A invocação de cada `doAsync*` passou a ser envolvida em
+  `UiThreadUtil.runOnUiThread`, garantindo `Looper` ativo no momento da subscrição do listener.
+  Correção cirúrgica: nenhuma mudança de API pública, tipos ou códigos de erro — nenhuma alteração
+  de código JS é exigida do consumidor.
+
 ### Added
 
 - **`calculateInstallments` — consulta opções de parcelamento antes da venda:** Nova função

@@ -2,32 +2,57 @@ package com.pagseguroplugpag
 
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInstallment
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableMap
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
 import io.mockk.slot
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PagseguroPlugpagModuleTest {
+
+  // Harness de threading (feature/018): os métodos doAsync* passam a invocar o SDK dentro de
+  // UiThreadUtil.runOnUiThread { ... }. O ambiente JUnit não possui main Looper, então mockamos
+  // UiThreadUtil estaticamente para executar o runnable de forma síncrona — permitindo que o
+  // capture(listenerSlot) registre o listener do SDK. Ver research.md Decisão 5.
+  @BeforeEach
+  fun setUpThreadingHarness() {
+    mockkStatic(UiThreadUtil::class)
+    // UiThreadUtil.runOnUiThread(Runnable) retorna Boolean nesta versão do RN — executa o
+    // runnable de forma síncrona e devolve true (sucesso do post).
+    every { UiThreadUtil.runOnUiThread(any()) } answers {
+      firstArg<Runnable>().run()
+      true
+    }
+  }
+
+  @AfterEach
+  fun tearDownThreadingHarness() {
+    unmockkStatic(UiThreadUtil::class)
+  }
 
   // --- initializeAndActivatePinPad ---
 
