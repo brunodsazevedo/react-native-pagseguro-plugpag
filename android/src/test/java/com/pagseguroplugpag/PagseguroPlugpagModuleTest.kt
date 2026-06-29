@@ -2,30 +2,58 @@ package com.pagseguroplugpag
 
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPag
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagActivationListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInstallment
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
-import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
+import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagIsActivatedListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableMap
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
 import io.mockk.slot
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PagseguroPlugpagModuleTest {
+
+  // Harness de threading (feature/018): os métodos doAsync* passam a invocar o SDK dentro de
+  // UiThreadUtil.runOnUiThread { ... }. O ambiente JUnit não possui main Looper, então mockamos
+  // UiThreadUtil estaticamente para executar o runnable de forma síncrona — permitindo que o
+  // capture(listenerSlot) registre o listener do SDK. Ver research.md Decisão 5.
+  @BeforeEach
+  fun setUpThreadingHarness() {
+    mockkStatic(UiThreadUtil::class)
+    // UiThreadUtil.runOnUiThread(Runnable) retorna Boolean nesta versão do RN — executa o
+    // runnable de forma síncrona e devolve true (sucesso do post).
+    every { UiThreadUtil.runOnUiThread(any()) } answers {
+      firstArg<Runnable>().run()
+      true
+    }
+  }
+
+  @AfterEach
+  fun tearDownThreadingHarness() {
+    unmockkStatic(UiThreadUtil::class)
+  }
 
   // --- initializeAndActivatePinPad ---
 
@@ -1022,5 +1050,198 @@ class PagseguroPlugpagModuleTest {
 
     // Expected: setPlugPagCustomPrinterLayout is NOT called
     verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
+  // --- isAuthenticated (T007 — feature/019) ---
+
+  @Test
+  fun `isAuthenticated resolves true when SDK returns true`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.isAuthenticated() } returns true
+
+    val resolvedSlot = slot<Boolean>()
+    every { mockPromise.resolve(capture(resolvedSlot)) } returns Unit
+
+    // isAuthenticated() should call promise.resolve(true)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `isAuthenticated resolves false when SDK returns false (false is NOT an error)`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.isAuthenticated() } returns false
+
+    val resolvedSlot = slot<Boolean>()
+    every { mockPromise.resolve(capture(resolvedSlot)) } returns Unit
+
+    // isAuthenticated() should call promise.resolve(false) — never reject
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `isAuthenticated rejects with PLUGPAG_INTERNAL_ERROR when exception is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.isAuthenticated() } throws RuntimeException("IPC failure")
+
+    // isAuthenticated() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- asyncIsAuthenticated (T011 — feature/019) ---
+
+  @Test
+  fun `asyncIsAuthenticated resolves true when onIsActivated is called with true`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagIsActivatedListener>()
+    every {
+      mockPlugPag.asyncIsAuthenticated(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onIsActivated(true)
+    }
+
+    // asyncIsAuthenticated() should call promise.resolve(true)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `asyncIsAuthenticated resolves false when onIsActivated is called with false (false is NOT an error)`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagIsActivatedListener>()
+    every {
+      mockPlugPag.asyncIsAuthenticated(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onIsActivated(false)
+    }
+
+    // asyncIsAuthenticated() should call promise.resolve(false) — never reject
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `asyncIsAuthenticated rejects with PLUGPAG_AUTHENTICATION_ERROR when onError is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagIsActivatedListener>()
+    every {
+      mockPlugPag.asyncIsAuthenticated(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError("Authentication service unavailable")
+    }
+
+    // asyncIsAuthenticated() should call promise.reject("PLUGPAG_AUTHENTICATION_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `asyncIsAuthenticated rejects with PLUGPAG_INTERNAL_ERROR when exception is thrown before listener`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every {
+      mockPlugPag.asyncIsAuthenticated(any<PlugPagIsActivatedListener>())
+    } throws RuntimeException("IPC failure")
+
+    // asyncIsAuthenticated() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- calculateInstallments (T006/T016 — feature/017) ---
+
+  @Test
+  fun `calculateInstallments resolves with options list when SDK returns installments`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "PARC_COMPRADOR"
+
+    val installment1 = mockk<PlugPagInstallment>()
+    every { installment1.quantity } returns 1
+    every { installment1.amount } returns 10000
+    every { installment1.total } returns 10000
+
+    val installment2 = mockk<PlugPagInstallment>()
+    every { installment2.quantity } returns 2
+    every { installment2.amount } returns 5100
+    every { installment2.total } returns 10200
+
+    every {
+      mockPlugPag.calculateInstallments("10000", PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR)
+    } returns listOf(installment1, installment2)
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // calculateInstallments should call promise.resolve with { options: [{quantity:1,...},{quantity:2,...}] }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `calculateInstallments resolves with empty options when SDK returns empty list`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "A_VISTA"
+
+    every {
+      mockPlugPag.calculateInstallments("10000", PlugPag.INSTALLMENT_TYPE_A_VISTA)
+    } returns emptyList()
+
+    val resolvedMapSlot = slot<WritableMap>()
+    every { mockPromise.resolve(capture(resolvedMapSlot)) } returns Unit
+
+    // calculateInstallments should call promise.resolve with { options: [] }
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `calculateInstallments rejects with PLUGPAG_INSTALLMENTS_ERROR when PlugPagException is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "PARC_COMPRADOR"
+
+    val exception = mockk<PlugPagException>()
+    every { exception.message } returns "SDK error"
+    every { exception.errorCode } returns "ERR_001"
+    every {
+      mockPlugPag.calculateInstallments(any(), any())
+    } throws exception
+
+    // calculateInstallments should call promise.reject("PLUGPAG_INSTALLMENTS_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `calculateInstallments rejects with PLUGPAG_INTERNAL_ERROR when generic Exception is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+    val mockData = mockk<ReadableMap>()
+
+    every { mockData.getInt("amount") } returns 10000
+    every { mockData.getString("installmentType") } returns "PARC_COMPRADOR"
+
+    every {
+      mockPlugPag.calculateInstallments(any(), any())
+    } throws RuntimeException("IPC failure")
+
+    // calculateInstallments should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
   }
 }

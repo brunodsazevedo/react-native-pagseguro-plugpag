@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-29
+
+### Added
+
+- **`isAuthenticated` e `asyncIsAuthenticated` — consulta de estado de ativação do terminal:**
+  Dois novos métodos no domínio `activation` para verificar se o terminal PagBank está ativado
+  sem precisar realizar uma ativação completa. `isAuthenticated(): Promise<boolean>` usa
+  `Dispatchers.IO` (SDK bloqueante por IPC); `asyncIsAuthenticated(): Promise<boolean>` usa
+  `UiThreadUtil.runOnUiThread` (SDK listener RxJava). Ambos retornam `false` quando o terminal
+  não está ativado — `false` é resultado válido, nunca rejeita a Promise por este motivo.
+  Guard de iOS de Nível 2 presente em ambos. Inclui testes unitários JS completos e testes
+  Kotlin para os caminhos de sucesso (`true`/`false`) e erro interno.
+
+- **`calculateInstallments` — consulta opções de parcelamento antes da venda:** Nova função
+  pública `calculateInstallments(data: CalculateInstallmentsRequest): Promise<CalculateInstallmentsResult>`
+  no domínio `payment`. Recebe `{ amount: number, installmentType: PlugPagInstallmentType }`
+  e resolve com `{ options: PlugPagInstallment[] }` (cada opção com `quantity`, `amount` e
+  `total` em centavos). A lista pode ser vazia (resultado válido). Validação fail-fast no JS
+  (`amount` deve ser inteiro > 0; `installmentType` no enum existente). Guard de iOS de Nível 2
+  presente. Usa `Dispatchers.IO` internamente (SDK síncrono bloqueante por IPC). Novos tipos
+  exportados: `CalculateInstallmentsRequest`, `PlugPagInstallment`, `CalculateInstallmentsResult`.
+
+### Fixed
+
+- **Callbacks `doAsync*` na New Architecture (Issue #13):** os métodos assíncronos
+  `doAsyncPayment`, `doAsyncInitializeAndActivatePinPad`, `doAsyncAbort`,
+  `doAsyncReprintCustomerReceipt` e `doAsyncReprintEstablishmentReceipt` invocavam o SDK PlugPag
+  diretamente na thread do TurboModule, que na New Architecture não possui `Looper` preparado —
+  os callbacks terminais RxJava (`onSuccess`/`onError`) eram descartados silenciosamente e a
+  Promise nunca concluía (o evento `onPaymentProgress` continuava chegando, daí o sintoma
+  assimétrico). A invocação de cada `doAsync*` passou a ser envolvida em
+  `UiThreadUtil.runOnUiThread`, garantindo `Looper` ativo no momento da subscrição do listener.
+  Correção cirúrgica: nenhuma mudança de API pública, tipos ou códigos de erro — nenhuma alteração
+  de código JS é exigida do consumidor. **Validado em terminal físico PagBank com
+  `newArchEnabled=true`.**
+
+### Changed
+
+- **ESLint: `android/build/` excluído da varredura:** Arquivos gerados pelo Gradle (relatórios
+  de teste em JS e artefatos de codegen) passaram a ser ignorados pelo ESLint via
+  `eslint.config.mjs`. Elimina falsos-positivos e falhas em `yarn release:rc` causados pela
+  varredura de artefatos de build não relacionados ao código-fonte da biblioteca.
+
 ## [1.2.1] - 2026-06-22
 
 ### Added

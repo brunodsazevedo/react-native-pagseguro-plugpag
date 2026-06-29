@@ -37,3 +37,21 @@ export async function doAsyncInitializeAndActivatePinPad(
     activationCode
   ) as Promise<PlugPagActivationSuccess>;
 }
+
+export async function isAuthenticated(): Promise<boolean> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: isAuthenticated() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+  return getNativeModule().isAuthenticated() as Promise<boolean>;
+}
+
+export async function asyncIsAuthenticated(): Promise<boolean> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: asyncIsAuthenticated() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+  return getNativeModule().asyncIsAuthenticated() as Promise<boolean>;
+}

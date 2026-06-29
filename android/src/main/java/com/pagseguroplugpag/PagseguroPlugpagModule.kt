@@ -6,19 +6,23 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagCustomPrinterLayout
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagEventListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInitializationResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagInstallment
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPaymentData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterData
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrinterListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagPrintResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
+import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagIsActivatedListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableNativeMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import kotlinx.coroutines.CoroutineScope
@@ -121,10 +125,62 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
       .emit("onPaymentProgress", params)
   }
 
+  // --- Helper for calculateInstallments error (feature/017) ---
+
+  private fun buildInstallmentsErrorUserInfo(e: PlugPagException): WritableNativeMap {
+    val map = WritableNativeMap()
+    map.putInt("result", -1)
+    map.putString("errorCode", e.errorCode ?: "")
+    map.putString("message", e.message ?: "Unknown error")
+    return map
+  }
+
+  // --- calculateInstallments (feature/017) ---
+
+  override fun calculateInstallments(data: ReadableMap, promise: Promise) {
+    // Threading Policy (Constituição VI): SDK calculateInstallments é bloqueante por IPC — Dispatchers.IO é necessário
+    CoroutineScope(Dispatchers.IO).launch {
+      try {
+        val installmentType = when (data.getString("installmentType")) {
+          "A_VISTA" -> PlugPag.INSTALLMENT_TYPE_A_VISTA
+          "PARC_VENDEDOR" -> PlugPag.INSTALLMENT_TYPE_PARC_VENDEDOR
+          "PARC_COMPRADOR" -> PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR
+          else -> PlugPag.INSTALLMENT_TYPE_A_VISTA
+        }
+        val saleValue = data.getInt("amount").toString()
+        val installments: List<PlugPagInstallment> =
+          plugPag.calculateInstallments(saleValue, installmentType) ?: emptyList()
+
+        val optionsArray = Arguments.createArray()
+        for (installment in installments) {
+          val item = WritableNativeMap()
+          item.putInt("quantity", installment.quantity)
+          item.putInt("amount", installment.amount)
+          item.putInt("total", installment.total)
+          optionsArray.pushMap(item)
+        }
+        val resultMap = WritableNativeMap()
+        resultMap.putArray("options", optionsArray)
+
+        withContext(Dispatchers.Main) {
+          promise.resolve(resultMap)
+        }
+      } catch (e: PlugPagException) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INSTALLMENTS_ERROR", buildInstallmentsErrorUserInfo(e))
+        }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        }
+      }
+    }
+  }
+
   // --- Abort methods (feature/012) ---
 
   override fun abort(promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK abort() é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK abort() é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         val result = plugPag.abort()
@@ -150,32 +206,36 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   }
 
   override fun doAsyncAbort(promise: Promise) {
-    try {
-      plugPag.asyncAbort(object : PlugPagAbortListener {
-        override fun onAbortRequested(abortRequested: Boolean) {
-          if (abortRequested) {
-            val successMap = WritableNativeMap()
-            successMap.putString("result", "ok")
-            promise.resolve(successMap)
-          } else {
+    // Threading Policy (Constituição VI): callbacks RxJava do SDK exigem Looper ativo na main
+    // thread, ausente nas threads de background do TurboModule na New Arch (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        plugPag.asyncAbort(object : PlugPagAbortListener {
+          override fun onAbortRequested(abortRequested: Boolean) {
+            if (abortRequested) {
+              val successMap = WritableNativeMap()
+              successMap.putString("result", "ok")
+              promise.resolve(successMap)
+            } else {
+              val map = WritableNativeMap()
+              map.putInt("result", -1)
+              map.putString("errorCode", "ABORT_NOT_REQUESTED")
+              map.putString("message", "Abort was not acknowledged by the terminal")
+              promise.reject("PLUGPAG_ABORT_ERROR", map)
+            }
+          }
+
+          override fun onError(errorMessage: String) {
             val map = WritableNativeMap()
             map.putInt("result", -1)
-            map.putString("errorCode", "ABORT_NOT_REQUESTED")
-            map.putString("message", "Abort was not acknowledged by the terminal")
+            map.putString("errorCode", "ABORT_ERROR")
+            map.putString("message", errorMessage)
             promise.reject("PLUGPAG_ABORT_ERROR", map)
           }
-        }
-
-        override fun onError(errorMessage: String) {
-          val map = WritableNativeMap()
-          map.putInt("result", -1)
-          map.putString("errorCode", "ABORT_ERROR")
-          map.putString("message", errorMessage)
-          promise.reject("PLUGPAG_ABORT_ERROR", map)
-        }
-      })
-    } catch (e: Exception) {
-      promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        })
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
     }
   }
 
@@ -185,10 +245,47 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
 
   override fun removeListeners(count: Double) {}
 
-  // --- Activation methods (feature/002) ---
+  // --- Activation methods (feature/002, feature/019) ---
+
+  override fun isAuthenticated(promise: Promise) {
+    // Threading Policy (Constituição VI): SDK isAuthenticated é bloqueante por IPC — Dispatchers.IO é necessário
+    CoroutineScope(Dispatchers.IO).launch {
+      try {
+        val authenticated = plugPag.isAuthenticated()
+        withContext(Dispatchers.Main) { promise.resolve(authenticated) }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        }
+      }
+    }
+  }
+
+  override fun asyncIsAuthenticated(promise: Promise) {
+    // Threading Policy (Constituição VI): callbacks RxJava do SDK exigem Looper ativo na main
+    // thread, ausente nas threads de background do TurboModule na New Arch (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        plugPag.asyncIsAuthenticated(object : PlugPagIsActivatedListener {
+          override fun onIsActivated(isActivated: Boolean) {
+            promise.resolve(isActivated)
+          }
+          override fun onError(errorMessage: String) {
+            val map = WritableNativeMap()
+            map.putInt("result", -1)
+            map.putString("errorCode", "AUTHENTICATION_ERROR")
+            map.putString("message", errorMessage)
+            promise.reject("PLUGPAG_AUTHENTICATION_ERROR", map)
+          }
+        })
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
+    }
+  }
 
   override fun initializeAndActivatePinPad(activationCode: String, promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK initializeAndActivatePinpad é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK initializeAndActivatePinpad é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         val activationData = PlugPagActivationData(activationCode)
@@ -212,35 +309,39 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   }
 
   override fun doAsyncInitializeAndActivatePinPad(activationCode: String, promise: Promise) {
-    try {
-      val activationData = PlugPagActivationData(activationCode)
-      plugPag.doAsyncInitializeAndActivatePinpad(
-        activationData,
-        object : PlugPagActivationListener {
-          override fun onActivationProgress(eventData: PlugPagEventData) {
-            // Reserved for future progress event feature
-          }
+    // Threading Policy (Constituição VI): callbacks RxJava do SDK exigem Looper ativo na main
+    // thread, ausente nas threads de background do TurboModule na New Arch (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        val activationData = PlugPagActivationData(activationCode)
+        plugPag.doAsyncInitializeAndActivatePinpad(
+          activationData,
+          object : PlugPagActivationListener {
+            override fun onActivationProgress(eventData: PlugPagEventData) {
+              // Reserved for future progress event feature
+            }
 
-          override fun onSuccess(result: PlugPagInitializationResult) {
-            val successMap = WritableNativeMap()
-            successMap.putString("result", "ok")
-            promise.resolve(successMap)
-          }
+            override fun onSuccess(result: PlugPagInitializationResult) {
+              val successMap = WritableNativeMap()
+              successMap.putString("result", "ok")
+              promise.resolve(successMap)
+            }
 
-          override fun onError(result: PlugPagInitializationResult) {
-            promise.reject("PLUGPAG_INITIALIZATION_ERROR", buildSdkErrorUserInfo(result))
+            override fun onError(result: PlugPagInitializationResult) {
+              promise.reject("PLUGPAG_INITIALIZATION_ERROR", buildSdkErrorUserInfo(result))
+            }
           }
-        }
-      )
-    } catch (e: Exception) {
-      promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        )
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
     }
   }
 
   // --- Payment methods (feature/003) ---
 
   override fun doPayment(data: ReadableMap, promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK doPayment é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK doPayment é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         val type = when (data.getString("type")) {
@@ -293,58 +394,63 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   }
 
   override fun doAsyncPayment(data: ReadableMap, promise: Promise) {
-    try {
-      val type = when (data.getString("type")) {
-        "CREDIT" -> PlugPag.TYPE_CREDITO
-        "DEBIT" -> PlugPag.TYPE_DEBITO
-        "PIX" -> PlugPag.TYPE_PIX
-        else -> PlugPag.TYPE_CREDITO
-      }
-      val installmentType = when (data.getString("installmentType")) {
-        "A_VISTA" -> PlugPag.INSTALLMENT_TYPE_A_VISTA
-        "PARC_VENDEDOR" -> PlugPag.INSTALLMENT_TYPE_PARC_VENDEDOR
-        "PARC_COMPRADOR" -> PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR
-        else -> PlugPag.INSTALLMENT_TYPE_A_VISTA
-      }
-      val paymentData = PlugPagPaymentData(
-        type = type,
-        amount = data.getInt("amount"),
-        installmentType = installmentType,
-        installments = data.getInt("installments"),
-        userReference = if (data.hasKey("userReference")) data.getString("userReference") else null,
-        printReceipt = if (data.hasKey("printReceipt")) data.getBoolean("printReceipt") else false
-      )
-
-      applyMaxTimeShowPopupIfPresent(data)
-      plugPag.doAsyncPayment(
-        paymentData,
-        object : PlugPagPaymentListener {
-          override fun onSuccess(result: PlugPagTransactionResult) {
-            promise.resolve(buildTransactionResultMap(result))
-          }
-
-          override fun onError(result: PlugPagTransactionResult) {
-            promise.reject("PLUGPAG_PAYMENT_ERROR", buildSdkPaymentErrorUserInfo(result))
-          }
-
-          override fun onPaymentProgress(eventData: PlugPagEventData) {
-            emitPaymentProgress(eventData)
-          }
-
-          override fun onPrinterSuccess(result: PlugPagPrintResult) {}
-
-          override fun onPrinterError(result: PlugPagPrintResult) {}
+    // Threading Policy (Constituição VI): métodos async baseados em listener RxJava do SDK
+    // DEVEM ser invocados na main thread — os callbacks exigem Looper ativo, ausente nas threads
+    // de background do TurboModule na New Arch. Invocar direto descarta o callback (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        val type = when (data.getString("type")) {
+          "CREDIT" -> PlugPag.TYPE_CREDITO
+          "DEBIT" -> PlugPag.TYPE_DEBITO
+          "PIX" -> PlugPag.TYPE_PIX
+          else -> PlugPag.TYPE_CREDITO
         }
-      )
-    } catch (e: Exception) {
-      promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        val installmentType = when (data.getString("installmentType")) {
+          "A_VISTA" -> PlugPag.INSTALLMENT_TYPE_A_VISTA
+          "PARC_VENDEDOR" -> PlugPag.INSTALLMENT_TYPE_PARC_VENDEDOR
+          "PARC_COMPRADOR" -> PlugPag.INSTALLMENT_TYPE_PARC_COMPRADOR
+          else -> PlugPag.INSTALLMENT_TYPE_A_VISTA
+        }
+        val paymentData = PlugPagPaymentData(
+          type = type,
+          amount = data.getInt("amount"),
+          installmentType = installmentType,
+          installments = data.getInt("installments"),
+          userReference = if (data.hasKey("userReference")) data.getString("userReference") else null,
+          printReceipt = if (data.hasKey("printReceipt")) data.getBoolean("printReceipt") else false
+        )
+
+        applyMaxTimeShowPopupIfPresent(data)
+        plugPag.doAsyncPayment(
+          paymentData,
+          object : PlugPagPaymentListener {
+            override fun onSuccess(result: PlugPagTransactionResult) {
+              promise.resolve(buildTransactionResultMap(result))
+            }
+
+            override fun onError(result: PlugPagTransactionResult) {
+              promise.reject("PLUGPAG_PAYMENT_ERROR", buildSdkPaymentErrorUserInfo(result))
+            }
+
+            override fun onPaymentProgress(eventData: PlugPagEventData) {
+              emitPaymentProgress(eventData)
+            }
+
+            override fun onPrinterSuccess(result: PlugPagPrintResult) {}
+
+            override fun onPrinterError(result: PlugPagPrintResult) {}
+          }
+        )
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
     }
   }
 
   // --- Refund methods (feature/005) ---
 
   override fun doRefund(data: ReadableMap, promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK voidPayment é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK voidPayment é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         val voidType = when (data.getString("voidType")) {
@@ -390,7 +496,7 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   // --- Printing methods (feature/006) ---
 
   override fun printFromFile(data: ReadableMap, promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK printFromFile é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK printFromFile é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         val filePath = data.getString("filePath") ?: ""
@@ -417,7 +523,7 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   }
 
   override fun reprintCustomerReceipt(promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK reprintCustomerReceipt é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK reprintCustomerReceipt é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         val result = plugPag.reprintCustomerReceipt()
@@ -440,26 +546,30 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   }
 
   override fun doAsyncReprintCustomerReceipt(promise: Promise) {
-    try {
-      plugPag.asyncReprintCustomerReceipt(object : PlugPagPrinterListener {
-        override fun onSuccess(result: PlugPagPrintResult) {
-          val successMap = WritableNativeMap()
-          successMap.putString("result", "ok")
-          successMap.putInt("steps", result.steps)
-          promise.resolve(successMap)
-        }
+    // Threading Policy (Constituição VI): callbacks RxJava do SDK exigem Looper ativo na main
+    // thread, ausente nas threads de background do TurboModule na New Arch (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        plugPag.asyncReprintCustomerReceipt(object : PlugPagPrinterListener {
+          override fun onSuccess(result: PlugPagPrintResult) {
+            val successMap = WritableNativeMap()
+            successMap.putString("result", "ok")
+            successMap.putInt("steps", result.steps)
+            promise.resolve(successMap)
+          }
 
-        override fun onError(result: PlugPagPrintResult) {
-          promise.reject("PLUGPAG_PRINT_ERROR", buildPrintErrorUserInfo(result))
-        }
-      })
-    } catch (e: Exception) {
-      promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+          override fun onError(result: PlugPagPrintResult) {
+            promise.reject("PLUGPAG_PRINT_ERROR", buildPrintErrorUserInfo(result))
+          }
+        })
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
     }
   }
 
   override fun reprintEstablishmentReceipt(promise: Promise) {
-    // EXCEPTION (Constituição Princípio VI): SDK reprintStablishmentReceipt é bloqueante por IPC — Dispatchers.IO é necessário
+    // Threading Policy (Constituição VI): SDK reprintStablishmentReceipt é bloqueante por IPC — Dispatchers.IO é necessário
     CoroutineScope(Dispatchers.IO).launch {
       try {
         // "Stablishment" is the SDK's spelling — see FR-013
@@ -483,21 +593,25 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
   }
 
   override fun doAsyncReprintEstablishmentReceipt(promise: Promise) {
-    try {
-      plugPag.asyncReprintEstablishmentReceipt(object : PlugPagPrinterListener {
-        override fun onSuccess(result: PlugPagPrintResult) {
-          val successMap = WritableNativeMap()
-          successMap.putString("result", "ok")
-          successMap.putInt("steps", result.steps)
-          promise.resolve(successMap)
-        }
+    // Threading Policy (Constituição VI): callbacks RxJava do SDK exigem Looper ativo na main
+    // thread, ausente nas threads de background do TurboModule na New Arch (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        plugPag.asyncReprintEstablishmentReceipt(object : PlugPagPrinterListener {
+          override fun onSuccess(result: PlugPagPrintResult) {
+            val successMap = WritableNativeMap()
+            successMap.putString("result", "ok")
+            successMap.putInt("steps", result.steps)
+            promise.resolve(successMap)
+          }
 
-        override fun onError(result: PlugPagPrintResult) {
-          promise.reject("PLUGPAG_PRINT_ERROR", buildPrintErrorUserInfo(result))
-        }
-      })
-    } catch (e: Exception) {
-      promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+          override fun onError(result: PlugPagPrintResult) {
+            promise.reject("PLUGPAG_PRINT_ERROR", buildPrintErrorUserInfo(result))
+          }
+        })
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
     }
   }
 

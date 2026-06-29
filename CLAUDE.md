@@ -23,7 +23,7 @@ de escopo (guarda de dois níveis em `src/index.ts`).
 | Framework | React Native 0.83.2 (New Architecture) |
 | Build | react-native-builder-bob 0.40.18 |
 | Expo Plugin | @expo/config-plugins ^9.0.0 |
-| Threading nativo | kotlinx.coroutines (somente quando SDK exige blocking I/O) |
+| Threading nativo | kotlinx.coroutines (`Dispatchers.IO` p/ métodos bloqueantes) + `UiThreadUtil` (p/ callbacks async/RxJava) |
 | Testes JS | Jest 29 + react-native preset |
 | Testes Kotlin | JUnit 5 + Mockk |
 | Lint | ESLint (flat config) + Prettier |
@@ -133,11 +133,23 @@ A constituição completa está em `.specify/memory/constitution.md`. Os princí
 ### Princípio VI — Android-Only Scope
 
 - Todo código nativo DEVE ser Kotlin 2.x.
-- Threading para chamadas SDK DEVE usar os métodos async do próprio SDK diretamente.
-  `Dispatchers.IO` / coroutines são **proibidos** salvo quando o SDK exige (blocking IPC).
-- **Exceção justificada**: `initializeAndActivatePinpad` é bloqueante por IPC.
-  Executar na main thread causaria ANR. `Dispatchers.IO` é tecnicamente exigido.
-  A exceção DEVE ser documentada com comentário inline no Kotlin.
+- Threading para chamadas SDK DEVE seguir a **Threading Policy** (Constituição v1.4.0,
+  Princípio VI). Não existe caminho em que a thread do TurboModule possa chamar o SDK sem
+  gerência de thread — na New Architecture os métodos nativos rodam em threads de background
+  sem `Looper` preparado.
+  - **Métodos bloqueantes do SDK** (IPC síncrono — `doPayment`, `voidPayment`,
+    `initializeAndActivatePinpad`, `printFromFile`, `reprint*`, `abort`,
+    `calculateInstallments`): rodar em `Dispatchers.IO` e resolver/rejeitar a Promise na
+    main thread. Rodar na main thread causaria ANR.
+  - **Métodos async baseados em listener** (callbacks RxJava — `doAsyncPayment`,
+    `doAsyncInitializeAndActivatePinpad`, `doAsyncAbort`, `asyncReprint*`): invocar e
+    entregar os callbacks na **main thread** via `UiThreadUtil.runOnUiThread { }`. Os
+    callbacks RxJava do SDK exigem `Looper` ativo, ausente nas threads de background do
+    TurboModule na New Arch — invocar direto descarta o callback terminal e a Promise nunca
+    resolve (Issue #13). NÃO usar `CoroutineScope(Dispatchers.Main)` para isso.
+  - Nunca assumir que um método de TurboModule executa em thread com `Looper`.
+- O comentário `// EXCEPTION (Constituição Princípio VI)` para threading deixa de ser
+  necessário — o threading correto passou a ser regra, não exceção.
 
 #### iOS Runtime Guard (Dois Níveis — src/index.ts)
 
@@ -227,8 +239,8 @@ private val plugPag: PlugPag by lazy { ... }
 private fun buildSdkErrorUserInfo(result: SdkResult): WritableNativeMap { ... }
 private fun buildInternalErrorUserInfo(e: Exception): WritableNativeMap { ... }
 
-// Variante síncrona bloqueante: DEVE usar Dispatchers.IO
-// EXCEPTION (Constituição Princípio VI): SDK é bloqueante por IPC — Dispatchers.IO é necessário
+// Variante síncrona bloqueante (IPC): DEVE rodar em Dispatchers.IO e resolver na Main.
+// Rodar na main thread causaria ANR (Threading Policy — Constituição v1.4.0).
 CoroutineScope(Dispatchers.IO).launch {
     val result = plugPag.blockingMethod(data)
     withContext(Dispatchers.Main) {
@@ -240,11 +252,15 @@ CoroutineScope(Dispatchers.IO).launch {
     }
 }
 
-// Variante assíncrona: listener nativo do SDK (SEM coroutines)
-plugPag.doAsyncMethod(data, object : SdkListener {
-    override fun onSuccess(result: SdkResult) { promise.resolve(...) }
-    override fun onError(result: SdkResult) { promise.reject(...) }
-})
+// Variante assíncrona (listener RxJava do SDK): DEVE ser invocada na MAIN thread via
+// UiThreadUtil.runOnUiThread — os callbacks RxJava exigem Looper ativo, ausente nas threads
+// de background do TurboModule na New Arch. Invocar direto descarta o callback (Issue #13).
+UiThreadUtil.runOnUiThread {
+    plugPag.doAsyncMethod(data, object : SdkListener {
+        override fun onSuccess(result: SdkResult) { promise.resolve(...) }
+        override fun onError(result: SdkResult) { promise.reject(...) }
+    })
+}
 ```
 
 ### Códigos de Erro
@@ -348,8 +364,22 @@ outra ação.
 | 007 — TS Domain Split (Clean Code) | `feature/007-ts-domain-split` | ✅ Completo |
 | 009 — Library Docs | `feature/009-library-docs` | ✅ Completo |
 | 010 — CI/CD npm Deploy | `feature/010-cicd-npm-deploy` | ✅ Completo |
+| 017 — Calculate Installments | `feature/017-calculate-installments` | ✅ Completo |
+| 018 — Fix Async Callbacks (New Arch) | `bugfix/018-fix-async-callbacks-new-arch` | ✅ Completo — validado em device (RC) |
+| 019 — isAuthenticated & asyncIsAuthenticated | `feature/019-is-authenticated` | ✅ Completo |
 
-### Feature/002 — Estado Atual (API Pública)
+> **Feature 018 — VALIDADA EM DEVICE ✅**: a correção dos `doAsync*` (`UiThreadUtil.runOnUiThread`)
+> foi **confirmada empiricamente** em terminal físico PagBank com `newArchEnabled=true` (RC com
+> sinal verde) — os callbacks RxJava passaram a resolver/rejeitar a Promise corretamente. O
+> fallback Opção C (research.md Decisão 2) **não foi necessário**.
+>
+> **Padrão confirmado como reutilizável**: todo novo método async baseado em listener RxJava do
+> SDK (ex.: `asyncIsAuthenticated` — feature/019) DEVE seguir o mesmo padrão dos `doAsync*` de
+> pagamento já validados — invocar o SDK dentro de `UiThreadUtil.runOnUiThread { }` e
+> resolver/rejeitar a Promise nos callbacks. Novos métodos async NÃO precisam mais ser tratados
+> como "pendentes de validação em device".
+
+### Feature/002 & 019 — Estado Atual (API Pública — domínio `activation`)
 
 ```typescript
 // Ativação do PinPad — variante síncrona (SDK bloqueante → Dispatchers.IO)
@@ -358,7 +388,15 @@ initializeAndActivatePinPad(activationCode: string): Promise<PlugPagActivationSu
 // Ativação do PinPad — variante assíncrona (SDK listener nativo)
 doAsyncInitializeAndActivatePinPad(activationCode: string): Promise<PlugPagActivationSuccess>
 
-// Tipo de retorno
+// Consulta de estado de ativação — síncrona (feature/019, SDK bloqueante → Dispatchers.IO)
+// false = terminal não ativado (resultado válido, NUNCA rejeita por isso)
+isAuthenticated(): Promise<boolean>
+
+// Consulta de estado de ativação — assíncrona (feature/019, SDK listener → UiThreadUtil)
+// false = terminal não ativado (resultado válido, NUNCA rejeita por isso)
+asyncIsAuthenticated(): Promise<boolean>
+
+// Tipo de retorno das funções de ativação
 interface PlugPagActivationSuccess { result: 'ok' }
 ```
 
@@ -413,6 +451,21 @@ interface PlugPagPaymentRequest {
 interface PlugPagPaymentProgressEvent {
   eventCode: number;
   customMessage: string | null;
+}
+
+interface CalculateInstallmentsRequest {
+  amount: number;                          // centavos, inteiro > 0
+  installmentType: PlugPagInstallmentType; // A_VISTA | PARC_VENDEDOR | PARC_COMPRADOR
+}
+
+interface PlugPagInstallment {
+  quantity: number; // número de parcelas
+  amount: number;   // valor de cada parcela, em centavos
+  total: number;    // total da transação, em centavos
+}
+
+interface CalculateInstallmentsResult {
+  options: PlugPagInstallment[]; // pode ser []
 }
 
 // --- Print (src/functions/print/types.ts) ---
@@ -492,6 +545,64 @@ fun `método rejeita com PLUGPAG_X_ERROR quando SDK retorna erro`() { ... }
 @Test
 fun `método rejeita com PLUGPAG_INTERNAL_ERROR quando SDK lança exceção`() { ... }
 ```
+
+### Infraestrutura de Testes Kotlin (feature/018 — IMPORTANTE)
+
+Até a feature/018, a suíte Kotlin **nunca havia compilado/rodado** — o `android/build.gradle` não
+tinha dependências de teste. A infra foi conectada em feature/018:
+
+```groovy
+// android/build.gradle
+android {
+  testOptions {
+    unitTests {
+      returnDefaultValues = true          // tipos Android/RN (ex.: WritableNativeMap) retornam default
+      all { useJUnitPlatform() }
+    }
+  }
+}
+dependencies {
+  testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+  testImplementation "io.mockk:mockk:1.13.13"
+  testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1"
+}
+```
+
+Rodar: `cd example/android && ./gradlew :react-native-pagseguro-plugpag:test`
+
+**Armadilhas conhecidas (descobertas em feature/018):**
+
+- **Pacotes dos listeners do SDK** (erram fácil — não estão todos na raiz `wrapper.`):
+  - `wrapper.listeners.PlugPagActivationListener`
+  - `wrapper.listeners.PlugPagPaymentListener`
+  - `wrapper.listeners.PlugPagAbortListener`
+  - `wrapper.PlugPagPrinterListener` ← este SIM fica na **raiz** `wrapper.`
+  - `wrapper.PlugPagEventListener` ← raiz `wrapper.`
+- **`UiThreadUtil.runOnUiThread(Runnable)` retorna `Boolean`** nesta versão do RN. Ao mockar:
+  ```kotlin
+  every { UiThreadUtil.runOnUiThread(any()) } answers { firstArg<Runnable>().run(); true }
+  ```
+  (sem o `true`, falha com "Type mismatch: inferred type is 'Unit', but 'Boolean' was expected").
+- **Harness `doAsync*`**: como a correção invoca o SDK dentro de `UiThreadUtil.runOnUiThread`, o
+  `@BeforeEach` DEVE `mockkStatic(UiThreadUtil::class)` e executar o runnable de forma síncrona —
+  caso contrário o `capture(listenerSlot)` nunca registra o listener (ambiente JUnit não tem main
+  `Looper`).
+
+> ⚠️ **Dívida técnica conhecida**: os testes Kotlin atuais são **placeholders estruturais** — não
+> instanciam `PagseguroPlugpagModule` nem injetam o `PlugPag` mock; apenas configuram mocks e
+> fazem `verify(exactly = 0) { promise.reject(...) }` sobre mocks relaxados nunca invocados, então
+> **passam trivialmente** (não falham antes da correção, contrariando TDD estrito). Exercitá-los de
+> verdade exige injeção de dependência do `PlugPag` (hoje `by lazy { PlugPag(reactApplicationContext) }`,
+> não injetável) ou `mockkConstructor(PlugPag::class)` + mock de `ReactApplicationContext`. Tratar
+> como melhoria futura dedicada antes de confiar na suíte Kotlin como gate real.
+
+### Convenção de comentários de threading (feature/018)
+
+Os comentários `// EXCEPTION (Constituição Princípio VI)` foram substituídos por
+`// Threading Policy (Constituição VI):` em **todos** os métodos com gerência de thread
+(bloqueantes e `doAsync*`). O threading correto é **regra**, não exceção (Constituição v1.4.0) —
+não reintroduzir o rótulo `EXCEPTION` para threading.
 
 ---
 
@@ -639,5 +750,15 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/016-max-time-show-popup/plan.md
+at specs/019-is-authenticated/plan.md
 <!-- SPECKIT END -->
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

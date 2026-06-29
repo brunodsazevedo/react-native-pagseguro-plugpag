@@ -29,3 +29,18 @@ export interface PlugPagPaymentProgressEvent {
   eventCode: number;
   customMessage: string | null;
 }
+
+export interface CalculateInstallmentsRequest {
+  amount: number;
+  installmentType: PlugPagInstallmentType;
+}
+
+export interface PlugPagInstallment {
+  quantity: number;
+  amount: number;
+  total: number;
+}
+
+export interface CalculateInstallmentsResult {
+  options: PlugPagInstallment[];
+}

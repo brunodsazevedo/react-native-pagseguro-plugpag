@@ -69,9 +69,25 @@ android {
       }
     }
   }
+
+  testOptions {
+    unitTests {
+      // Tipos Android/RN referenciados nos testes JVM (ex.: WritableNativeMap) retornam default.
+      returnDefaultValues = true
+      all {
+        useJUnitPlatform()
+      }
+    }
+  }
 }
 
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation 'br.com.uol.pagseguro.plugpagservice.wrapper:wrapper:1.35.0'
+
+  // Testes de integração Kotlin (Constituição Princípio III — TDD; FR-008)
+  testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+  testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+  testImplementation "io.mockk:mockk:1.13.13"
+  testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1"
 }

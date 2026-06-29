@@ -5,11 +5,16 @@ import { InstallmentType, PaymentType } from './types';
 import type { Spec } from '../../NativePagseguroPlugpag';
 import type { PlugPagTransactionResult } from '../../types/sharedTypes';
 import type {
+  CalculateInstallmentsRequest,
+  CalculateInstallmentsResult,
   PlugPagPaymentProgressEvent,
   PlugPagPaymentRequest,
 } from './types';
 
 export type {
+  CalculateInstallmentsRequest,
+  CalculateInstallmentsResult,
+  PlugPagInstallment,
   PlugPagInstallmentType,
   PlugPagPaymentProgressEvent,
   PlugPagPaymentRequest,
@@ -135,6 +140,38 @@ export function subscribeToPaymentProgress(
     callback as any // EXCEPTION: RN NativeEventEmitter generic Object type
   );
   return () => sub.remove();
+}
+
+function validateCalculateInstallmentsRequest(
+  data: CalculateInstallmentsRequest
+): void {
+  if (!(Number.isInteger(data.amount) && data.amount > 0)) {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: calculateInstallments() — amount must be an integer > 0.'
+    );
+  }
+  const validInstallmentTypes = Object.values(InstallmentType);
+  if (!validInstallmentTypes.includes(data.installmentType)) {
+    throw new Error(
+      `[react-native-pagseguro-plugpag] ERROR: calculateInstallments() — installmentType "${String(
+        data.installmentType
+      )}" is not valid. Accepted values: ${validInstallmentTypes.join(', ')}.`
+    );
+  }
+}
+
+export async function calculateInstallments(
+  data: CalculateInstallmentsRequest
+): Promise<CalculateInstallmentsResult> {
+  if (Platform.OS !== 'android') {
+    throw new Error(
+      '[react-native-pagseguro-plugpag] ERROR: calculateInstallments() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  }
+  validateCalculateInstallmentsRequest(data);
+  return getNativeModule().calculateInstallments(
+    data
+  ) as Promise<CalculateInstallmentsResult>;
 }
 
 export { PaymentType, InstallmentType };

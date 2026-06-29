@@ -3,6 +3,8 @@ import { TurboModuleRegistry, type TurboModule } from 'react-native';
 export interface Spec extends TurboModule {
   initializeAndActivatePinPad(activationCode: string): Promise<Object>;
   doAsyncInitializeAndActivatePinPad(activationCode: string): Promise<Object>;
+  isAuthenticated(): Promise<boolean>;
+  asyncIsAuthenticated(): Promise<boolean>;
   doPayment(data: Object): Promise<Object>;
   doAsyncPayment(data: Object): Promise<Object>;
   doRefund(data: Object): Promise<Object>;
@@ -13,6 +15,7 @@ export interface Spec extends TurboModule {
   doAsyncReprintEstablishmentReceipt(): Promise<Object>;
   abort(): Promise<Object>;
   doAsyncAbort(): Promise<Object>;
+  calculateInstallments(data: Object): Promise<Object>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }

@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import {
+  calculateInstallments,
   doAsyncPayment,
   doPayment,
   subscribeToPaymentProgress,
@@ -8,12 +9,14 @@ import {
 
 const mockDoPayment = jest.fn();
 const mockDoAsyncPayment = jest.fn();
+const mockCalculateInstallments = jest.fn();
 
 jest.mock('../../NativePagseguroPlugpag', () => ({
   __esModule: true,
   default: {
     doPayment: mockDoPayment,
     doAsyncPayment: mockDoAsyncPayment,
+    calculateInstallments: mockCalculateInstallments,
     addListener: jest.fn(),
     removeListeners: jest.fn(),
   },
@@ -419,5 +422,167 @@ describe('subscribeToPaymentProgress — Android normal operation', () => {
     const unsubscribe = subscribeToPaymentProgress(() => {});
     expect(typeof unsubscribe).toBe('function');
     unsubscribe();
+  });
+});
+
+// =============================================================================
+// calculateInstallments — US1: caminho feliz (Android)
+// =============================================================================
+
+describe('calculateInstallments — US1: caminho feliz', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('resolve com { options: [...] } tipado quando SDK retorna lista de parcelas', async () => {
+    const mockOptions = [
+      { quantity: 1, amount: 10000, total: 10000 },
+      { quantity: 2, amount: 5100, total: 10200 },
+    ];
+    mockCalculateInstallments.mockResolvedValueOnce({ options: mockOptions });
+
+    const result = await calculateInstallments({
+      amount: 10000,
+      installmentType: 'PARC_COMPRADOR',
+    });
+
+    expect(result).toEqual({ options: mockOptions });
+    expect(mockCalculateInstallments).toHaveBeenCalledWith({
+      amount: 10000,
+      installmentType: 'PARC_COMPRADOR',
+    });
+  });
+
+  it('resolve com { options: [] } quando SDK retorna lista vazia', async () => {
+    mockCalculateInstallments.mockResolvedValueOnce({ options: [] });
+
+    const result = await calculateInstallments({
+      amount: 10000,
+      installmentType: 'A_VISTA',
+    });
+
+    expect(result).toEqual({ options: [] });
+  });
+});
+
+// =============================================================================
+// calculateInstallments — US2: validação fail-fast
+// =============================================================================
+
+describe('calculateInstallments — US2: validação amount', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('rejeita quando amount = 0, sem chamar o módulo nativo', async () => {
+    await expect(
+      calculateInstallments({ amount: 0, installmentType: 'A_VISTA' })
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: calculateInstallments() — amount must be an integer > 0.'
+    );
+    expect(mockCalculateInstallments).not.toHaveBeenCalled();
+  });
+
+  it('rejeita quando amount é negativo, sem chamar o módulo nativo', async () => {
+    await expect(
+      calculateInstallments({ amount: -100, installmentType: 'A_VISTA' })
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: calculateInstallments() — amount must be an integer > 0.'
+    );
+    expect(mockCalculateInstallments).not.toHaveBeenCalled();
+  });
+
+  it('rejeita quando amount = 10.5 (não-inteiro), sem chamar o módulo nativo', async () => {
+    await expect(
+      calculateInstallments({ amount: 10.5, installmentType: 'A_VISTA' })
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: calculateInstallments() — amount must be an integer > 0.'
+    );
+    expect(mockCalculateInstallments).not.toHaveBeenCalled();
+  });
+});
+
+describe('calculateInstallments — US2: validação installmentType', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    jest.clearAllMocks();
+  });
+
+  it('rejeita quando installmentType é inválido, sem chamar o módulo nativo', async () => {
+    await expect(
+      calculateInstallments({
+        amount: 1000,
+        installmentType: 'PARCELADO' as any,
+      })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR'
+        ),
+      })
+    );
+    expect(mockCalculateInstallments).not.toHaveBeenCalled();
+  });
+
+  it('rejeita quando installmentType é null, sem chamar o módulo nativo', async () => {
+    await expect(
+      calculateInstallments({ amount: 1000, installmentType: null as any })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'A_VISTA, PARC_VENDEDOR, PARC_COMPRADOR'
+        ),
+      })
+    );
+    expect(mockCalculateInstallments).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// calculateInstallments — US3: guard de plataforma (iOS)
+// =============================================================================
+
+describe('calculateInstallments — US3: guard de plataforma iOS', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+  });
+
+  it('rejeita com erro prefixado em iOS', async () => {
+    await expect(
+      calculateInstallments({ amount: 10000, installmentType: 'A_VISTA' })
+    ).rejects.toThrow(
+      '[react-native-pagseguro-plugpag] ERROR: calculateInstallments() is not available on iOS. PagSeguro PlugPag SDK is Android-only.'
+    );
+  });
+
+  it('guard iOS precede validação: iOS com requisição inválida rejeita pela mensagem do guard', async () => {
+    await expect(
+      calculateInstallments({ amount: 0, installmentType: 'A_VISTA' })
+    ).rejects.toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining(
+          'calculateInstallments() is not available on iOS'
+        ),
+      })
+    );
   });
 });
