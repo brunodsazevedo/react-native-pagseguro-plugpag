@@ -365,16 +365,21 @@ outra ação.
 | 009 — Library Docs | `feature/009-library-docs` | ✅ Completo |
 | 010 — CI/CD npm Deploy | `feature/010-cicd-npm-deploy` | ✅ Completo |
 | 017 — Calculate Installments | `feature/017-calculate-installments` | ✅ Completo |
-| 018 — Fix Async Callbacks (New Arch) | `bugfix/018-fix-async-callbacks-new-arch` | ⏳ Implementado — aguardando validação em device via RC |
+| 018 — Fix Async Callbacks (New Arch) | `bugfix/018-fix-async-callbacks-new-arch` | ✅ Completo — validado em device (RC) |
+| 019 — isAuthenticated & asyncIsAuthenticated | `feature/019-is-authenticated` | ✅ Completo |
 
-> **Feature 018 — validação pendente (NÃO bloqueante)**: a correção dos `doAsync*`
-> (`UiThreadUtil.runOnUiThread`) só pode ser confirmada empiricamente em terminal físico PagBank
-> com `newArchEnabled=true`. A estratégia acordada é **publicar uma versão RC no npm** e validar
-> com o autor da Issue #13 se os callbacks passaram a resolver/rejeitar a Promise. Se confirmar →
-> promover para `latest`; se falhar → acionar o fallback Opção C (research.md Decisão 2). NÃO
-> tratar como gate bloqueante de merge.
+> **Feature 018 — VALIDADA EM DEVICE ✅**: a correção dos `doAsync*` (`UiThreadUtil.runOnUiThread`)
+> foi **confirmada empiricamente** em terminal físico PagBank com `newArchEnabled=true` (RC com
+> sinal verde) — os callbacks RxJava passaram a resolver/rejeitar a Promise corretamente. O
+> fallback Opção C (research.md Decisão 2) **não foi necessário**.
+>
+> **Padrão confirmado como reutilizável**: todo novo método async baseado em listener RxJava do
+> SDK (ex.: `asyncIsAuthenticated` — feature/019) DEVE seguir o mesmo padrão dos `doAsync*` de
+> pagamento já validados — invocar o SDK dentro de `UiThreadUtil.runOnUiThread { }` e
+> resolver/rejeitar a Promise nos callbacks. Novos métodos async NÃO precisam mais ser tratados
+> como "pendentes de validação em device".
 
-### Feature/002 — Estado Atual (API Pública)
+### Feature/002 & 019 — Estado Atual (API Pública — domínio `activation`)
 
 ```typescript
 // Ativação do PinPad — variante síncrona (SDK bloqueante → Dispatchers.IO)
@@ -383,7 +388,15 @@ initializeAndActivatePinPad(activationCode: string): Promise<PlugPagActivationSu
 // Ativação do PinPad — variante assíncrona (SDK listener nativo)
 doAsyncInitializeAndActivatePinPad(activationCode: string): Promise<PlugPagActivationSuccess>
 
-// Tipo de retorno
+// Consulta de estado de ativação — síncrona (feature/019, SDK bloqueante → Dispatchers.IO)
+// false = terminal não ativado (resultado válido, NUNCA rejeita por isso)
+isAuthenticated(): Promise<boolean>
+
+// Consulta de estado de ativação — assíncrona (feature/019, SDK listener → UiThreadUtil)
+// false = terminal não ativado (resultado válido, NUNCA rejeita por isso)
+asyncIsAuthenticated(): Promise<boolean>
+
+// Tipo de retorno das funções de ativação
 interface PlugPagActivationSuccess { result: 'ok' }
 ```
 
@@ -737,7 +750,7 @@ A documentação permanente das features fica em `specs/<NNN>-<nome-feature>/`.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/018-fix-async-callbacks-new-arch/plan.md
+at specs/019-is-authenticated/plan.md
 <!-- SPECKIT END -->
 
 ## graphify

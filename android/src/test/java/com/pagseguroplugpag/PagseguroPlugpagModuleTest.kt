@@ -14,6 +14,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagVoidData
 import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagIsActivatedListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
@@ -1049,6 +1050,110 @@ class PagseguroPlugpagModuleTest {
 
     // Expected: setPlugPagCustomPrinterLayout is NOT called
     verify(exactly = 0) { mockPlugPag.setPlugPagCustomPrinterLayout(any()) }
+  }
+
+  // --- isAuthenticated (T007 — feature/019) ---
+
+  @Test
+  fun `isAuthenticated resolves true when SDK returns true`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.isAuthenticated() } returns true
+
+    val resolvedSlot = slot<Boolean>()
+    every { mockPromise.resolve(capture(resolvedSlot)) } returns Unit
+
+    // isAuthenticated() should call promise.resolve(true)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `isAuthenticated resolves false when SDK returns false (false is NOT an error)`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.isAuthenticated() } returns false
+
+    val resolvedSlot = slot<Boolean>()
+    every { mockPromise.resolve(capture(resolvedSlot)) } returns Unit
+
+    // isAuthenticated() should call promise.resolve(false) — never reject
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `isAuthenticated rejects with PLUGPAG_INTERNAL_ERROR when exception is thrown`() = runTest {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every { mockPlugPag.isAuthenticated() } throws RuntimeException("IPC failure")
+
+    // isAuthenticated() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  // --- asyncIsAuthenticated (T011 — feature/019) ---
+
+  @Test
+  fun `asyncIsAuthenticated resolves true when onIsActivated is called with true`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagIsActivatedListener>()
+    every {
+      mockPlugPag.asyncIsAuthenticated(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onIsActivated(true)
+    }
+
+    // asyncIsAuthenticated() should call promise.resolve(true)
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `asyncIsAuthenticated resolves false when onIsActivated is called with false (false is NOT an error)`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagIsActivatedListener>()
+    every {
+      mockPlugPag.asyncIsAuthenticated(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onIsActivated(false)
+    }
+
+    // asyncIsAuthenticated() should call promise.resolve(false) — never reject
+    verify(exactly = 0) { mockPromise.reject(any<String>(), any<WritableMap>()) }
+  }
+
+  @Test
+  fun `asyncIsAuthenticated rejects with PLUGPAG_AUTHENTICATION_ERROR when onError is called`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    val listenerSlot = slot<PlugPagIsActivatedListener>()
+    every {
+      mockPlugPag.asyncIsAuthenticated(capture(listenerSlot))
+    } answers {
+      listenerSlot.captured.onError("Authentication service unavailable")
+    }
+
+    // asyncIsAuthenticated() should call promise.reject("PLUGPAG_AUTHENTICATION_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
+  }
+
+  @Test
+  fun `asyncIsAuthenticated rejects with PLUGPAG_INTERNAL_ERROR when exception is thrown before listener`() {
+    val mockPlugPag = mockk<PlugPag>()
+    val mockPromise = mockk<Promise>(relaxed = true)
+
+    every {
+      mockPlugPag.asyncIsAuthenticated(any<PlugPagIsActivatedListener>())
+    } throws RuntimeException("IPC failure")
+
+    // asyncIsAuthenticated() should call promise.reject("PLUGPAG_INTERNAL_ERROR", ...)
+    verify(exactly = 0) { mockPromise.resolve(any()) }
   }
 
   // --- calculateInstallments (T006/T016 — feature/017) ---

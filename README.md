@@ -188,6 +188,40 @@ Use the synchronous variant for straightforward activation flows. Use the async 
 
 ---
 
+### Checking Authentication Status
+
+Query whether the terminal is currently activated without triggering any activation flow. Returns `true` if activated, `false` if not — **`false` is a valid result, not an error.**
+
+**Synchronous check** (blocking I/O via Dispatchers.IO):
+
+```typescript
+import { isAuthenticated } from 'react-native-pagseguro-plugpag';
+
+const authenticated = await isAuthenticated();
+if (authenticated) {
+  // Terminal is ready — proceed with payment
+} else {
+  // Terminal needs activation — call initializeAndActivatePinPad
+}
+```
+
+**Asynchronous check** (uses native SDK listener — same pattern as `doAsyncPayment`):
+
+```typescript
+import { asyncIsAuthenticated } from 'react-native-pagseguro-plugpag';
+
+const authenticated = await asyncIsAuthenticated();
+if (authenticated) {
+  // Terminal is ready
+} else {
+  // Terminal needs activation
+}
+```
+
+Both variants resolve `true` or `false` — they never reject because the terminal is not activated. Only an unexpected SDK failure (e.g., IPC error) will reject the promise.
+
+---
+
 ### Debit Payment
 
 ```typescript
@@ -446,6 +480,8 @@ function PaymentScreen() {
 |----------|-----------|---------|-------------|
 | `initializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Activates the PinPad synchronously (blocking I/O via Dispatchers.IO) |
 | `doAsyncInitializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Activates the PinPad using the native SDK async listener |
+| `isAuthenticated` | — | `Promise<boolean>` | Checks if the terminal is activated (sync). Returns `true`/`false` — `false` is never an error |
+| `asyncIsAuthenticated` | — | `Promise<boolean>` | Checks if the terminal is activated (async listener). Returns `true`/`false` — `false` is never an error |
 | `calculateInstallments` | `data: CalculateInstallmentsRequest` | `Promise<CalculateInstallmentsResult>` | Returns installment options for a given amount before calling `doPayment` |
 | `doPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processes a payment synchronously (blocking I/O) |
 | `doAsyncPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processes a payment using the native SDK async listener |

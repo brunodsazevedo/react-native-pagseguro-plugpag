@@ -16,6 +16,7 @@ import br.com.uol.pagseguro.plugpagservice.wrapper.PlugPagTransactionResult
 import br.com.uol.pagseguro.plugpagservice.wrapper.exception.PlugPagException
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagAbortListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagIsActivatedListener
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -244,7 +245,44 @@ class PagseguroPlugpagModule(reactContext: ReactApplicationContext) :
 
   override fun removeListeners(count: Double) {}
 
-  // --- Activation methods (feature/002) ---
+  // --- Activation methods (feature/002, feature/019) ---
+
+  override fun isAuthenticated(promise: Promise) {
+    // Threading Policy (Constituição VI): SDK isAuthenticated é bloqueante por IPC — Dispatchers.IO é necessário
+    CoroutineScope(Dispatchers.IO).launch {
+      try {
+        val authenticated = plugPag.isAuthenticated()
+        withContext(Dispatchers.Main) { promise.resolve(authenticated) }
+      } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+          promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+        }
+      }
+    }
+  }
+
+  override fun asyncIsAuthenticated(promise: Promise) {
+    // Threading Policy (Constituição VI): callbacks RxJava do SDK exigem Looper ativo na main
+    // thread, ausente nas threads de background do TurboModule na New Arch (Issue #13).
+    UiThreadUtil.runOnUiThread {
+      try {
+        plugPag.asyncIsAuthenticated(object : PlugPagIsActivatedListener {
+          override fun onIsActivated(isActivated: Boolean) {
+            promise.resolve(isActivated)
+          }
+          override fun onError(errorMessage: String) {
+            val map = WritableNativeMap()
+            map.putInt("result", -1)
+            map.putString("errorCode", "AUTHENTICATION_ERROR")
+            map.putString("message", errorMessage)
+            promise.reject("PLUGPAG_AUTHENTICATION_ERROR", map)
+          }
+        })
+      } catch (e: Exception) {
+        promise.reject("PLUGPAG_INTERNAL_ERROR", buildInternalErrorUserInfo(e))
+      }
+    }
+  }
 
   override fun initializeAndActivatePinPad(activationCode: String, promise: Promise) {
     // Threading Policy (Constituição VI): SDK initializeAndActivatePinpad é bloqueante por IPC — Dispatchers.IO é necessário

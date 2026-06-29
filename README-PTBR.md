@@ -189,6 +189,40 @@ Use a variante síncrona para fluxos de ativação simples. Use a variante assí
 
 ---
 
+### Verificar Estado de Ativação
+
+Consulte se o terminal está ativado sem disparar nenhum fluxo de ativação. Retorna `true` se ativado, `false` se não — **`false` é resultado válido, não é um erro.**
+
+**Verificação síncrona** (I/O bloqueante via Dispatchers.IO):
+
+```typescript
+import { isAuthenticated } from 'react-native-pagseguro-plugpag';
+
+const autenticado = await isAuthenticated();
+if (autenticado) {
+  // Terminal pronto — prossiga com o pagamento
+} else {
+  // Terminal precisa de ativação — chame initializeAndActivatePinPad
+}
+```
+
+**Verificação assíncrona** (usa listener nativo do SDK — mesmo padrão de `doAsyncPayment`):
+
+```typescript
+import { asyncIsAuthenticated } from 'react-native-pagseguro-plugpag';
+
+const autenticado = await asyncIsAuthenticated();
+if (autenticado) {
+  // Terminal pronto
+} else {
+  // Terminal precisa de ativação
+}
+```
+
+Ambas as variantes resolvem `true` ou `false` — nunca rejeitam porque o terminal não está ativado. Somente uma falha inesperada do SDK (ex.: erro de IPC) rejeitará a promise.
+
+---
+
 ### Pagamento com Débito
 
 ```typescript
@@ -447,6 +481,8 @@ function PaymentScreen() {
 |--------|-----------|---------|-----------|
 | `initializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Ativa o PinPad de forma síncrona (I/O bloqueante via Dispatchers.IO) |
 | `doAsyncInitializeAndActivatePinPad` | `activationCode: string` | `Promise<PlugPagActivationSuccess>` | Ativa o PinPad usando o listener assíncrono nativo do SDK |
+| `isAuthenticated` | — | `Promise<boolean>` | Verifica se o terminal está ativado (síncrono). Retorna `true`/`false` — `false` nunca é erro |
+| `asyncIsAuthenticated` | — | `Promise<boolean>` | Verifica se o terminal está ativado (listener assíncrono). Retorna `true`/`false` — `false` nunca é erro |
 | `calculateInstallments` | `data: CalculateInstallmentsRequest` | `Promise<CalculateInstallmentsResult>` | Retorna as opções de parcelamento para um valor antes de chamar `doPayment` |
 | `doPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processa um pagamento de forma síncrona (I/O bloqueante) |
 | `doAsyncPayment` | `data: PlugPagPaymentRequest` | `Promise<PlugPagTransactionResult>` | Processa um pagamento usando o listener assíncrono nativo do SDK |
